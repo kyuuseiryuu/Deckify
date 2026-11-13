@@ -1,6 +1,6 @@
 [package]
 name = "deckify"
-version = "0.1.0"
+version = "1.0.1"
 description = "Turn mobile devices into a customizable Deckify controller"
 authors = ["Deckify"]
 edition = "2021"
