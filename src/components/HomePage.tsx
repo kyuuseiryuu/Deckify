@@ -1,0 +1,306 @@
+import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  Copy,
+  Check,
+  Trash2,
+  Edit3,
+  ExternalLink,
+  Sun,
+  Moon,
+  Plus,
+  LayoutGrid,
+  ShieldAlert,
+  KeyRound,
+} from "lucide-react";
+import {
+  checkAccessibilityPermission,
+  openAccessibilitySettings,
+} from "../api";
+import type { LayoutConfig, ServerInfo } from "../types";
+import type { ThemeMode } from "../utils/theme";
+
+interface HomePageProps {
+  serverInfo: ServerInfo | null;
+  layouts: LayoutConfig[];
+  onlineCount: number;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+  onCreateLayout: () => void;
+  onSelectLayout: (layout: LayoutConfig) => void;
+  onDuplicateLayout: (layout: LayoutConfig) => void;
+  onDeleteLayout: (layoutId: string) => void;
+  onUpdatePairingCode: (code: string) => Promise<void>;
+}
+
+function formatLastSeen(ts: number): string {
+  if (!ts) return "从未连接";
+  const diff = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+  if (diff < 60) return "刚刚";
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+  return new Date(ts * 1000).toLocaleDateString();
+}
+
+export function HomePage({
+  serverInfo,
+  layouts,
+  onlineCount,
+  theme,
+  onToggleTheme,
+  onCreateLayout,
+  onSelectLayout,
+  onDuplicateLayout,
+  onDeleteLayout,
+  onUpdatePairingCode,
+}: HomePageProps) {
+  const [copied, setCopied] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeSaved, setCodeSaved] = useState(false);
+  const [accessibilityOk, setAccessibilityOk] = useState(true);
+
+  useEffect(() => {
+    if (serverInfo?.pairingCode) {
+      setCodeInput(serverInfo.pairingCode);
+    }
+  }, [serverInfo?.pairingCode]);
+
+  const refreshAccessibility = () => {
+    checkAccessibilityPermission(false)
+      .then(setAccessibilityOk)
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshAccessibility();
+    window.addEventListener("focus", refreshAccessibility);
+    return () => window.removeEventListener("focus", refreshAccessibility);
+  }, []);
+
+  const handleCopy = async () => {
+    if (!serverInfo) return;
+    await navigator.clipboard.writeText(serverInfo.mobileUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const handleSaveCode = async () => {
+    const trimmed = codeInput.trim();
+    if (!trimmed) return;
+    await onUpdatePairingCode(trimmed);
+    setCodeSaved(true);
+    setTimeout(() => setCodeSaved(false), 1800);
+  };
+
+  return (
+    <div className="home-container">
+      <header className="home-header">
+        <div>
+          <h1 className="app-title">SmartDeck</h1>
+          <p className="app-subtitle">
+            在桌面端创建与编辑布局配置，移动端扫码后可自由选择并实时同步切换
+          </p>
+        </div>
+        <div className="home-header-actions">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={onToggleTheme}
+            title={theme === "dark" ? "切换到明亮模式" : "切换到暗黑模式"}
+          >
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            <span>{theme === "dark" ? "明亮" : "暗黑"}</span>
+          </button>
+          {serverInfo && (
+            <div className="server-badge">
+              <span className="dot-online" />
+              <span>
+                服务运行中 · {serverInfo.lanIp}:{serverInfo.port} · 在线 {onlineCount}
+              </span>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {!accessibilityOk && (
+        <div className="accessibility-banner">
+          <div className="accessibility-banner-text">
+            <ShieldAlert size={18} />
+            <div>
+              <strong>未检测到 macOS 辅助功能权限</strong>
+              <p>
+                快捷键与媒体控制（播放/暂停、切歌）需要辅助功能权限。请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 SmartDeck（若重新打包过，请先用「-」移除旧的 SmartDeck 再重新添加或开关）。
+              </p>
+            </div>
+          </div>
+          <div className="accessibility-banner-actions">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => openAccessibilitySettings()}
+            >
+              打开辅助功能设置
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={refreshAccessibility}
+            >
+              重新检测
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="home-grid">
+        <section className="card qr-card">
+          <h2 className="card-title">扫码连接移动设备</h2>
+          <p className="card-desc">
+            确保手机与电脑处于同一局域网，扫码后即可在手机上选择要使用的布局配置：
+          </p>
+
+          <div className="qr-box">
+            {serverInfo ? (
+              <QRCodeSVG
+                value={serverInfo.mobileUrl}
+                size={196}
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                level="M"
+              />
+            ) : (
+              <div className="qr-loading">正在启动服务...</div>
+            )}
+          </div>
+
+          {serverInfo && (
+            <>
+              <div className="url-row">
+                <code className="url-text">{serverInfo.mobileUrl}</code>
+                <button className="btn btn-secondary" onClick={handleCopy}>
+                  {copied ? <Check size={15} /> : <Copy size={15} />}
+                  <span>{copied ? "已复制" : "复制"}</span>
+                </button>
+                <a
+                  className="btn btn-secondary"
+                  href={`http://127.0.0.1:${serverInfo.port}/deck`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="在本机浏览器模拟移动端"
+                >
+                  <ExternalLink size={15} />
+                  <span>本机预览</span>
+                </a>
+              </div>
+
+              <div className="pairing-box">
+                <div className="pairing-box-header">
+                  <KeyRound size={15} />
+                  <span>连接配对码</span>
+                  {!serverInfo.pairingConfigured && (
+                    <span className="pairing-init-tip">
+                      初次使用建议确认或自定义配对码
+                    </span>
+                  )}
+                </div>
+                <div className="pairing-box-row">
+                  <input
+                    className="pairing-input"
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    placeholder="输入配对码（如 4829）"
+                    maxLength={16}
+                  />
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSaveCode}
+                    disabled={!codeInput.trim()}
+                  >
+                    {codeSaved ? <Check size={14} /> : null}
+                    <span>{codeSaved ? "已保存" : "保存配对码"}</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+
+        <div className="home-right-col">
+          <section className="card">
+            <div className="card-header-row">
+              <h2 className="card-title">布局配置 ({layouts.length})</h2>
+              <button className="btn btn-primary btn-sm" onClick={onCreateLayout}>
+                <Plus size={14} />
+                <span>创建配置</span>
+              </button>
+            </div>
+
+            {layouts.length === 0 ? (
+              <div className="empty-devices">
+                <LayoutGrid size={36} className="empty-icon" />
+                <p>暂无布局配置</p>
+                <span>点击右上角「创建配置」开始设计你的 SmartDeck 面板</span>
+              </div>
+            ) : (
+              <div className="device-list">
+                {layouts.map((layout) => {
+                  const isLandscape = layout.width > layout.height;
+                  return (
+                    <div key={layout.id} className="device-item">
+                      <div
+                        className="device-main"
+                        onClick={() => onSelectLayout(layout)}
+                      >
+                        <div className="device-icon-wrap">
+                          <LayoutGrid size={20} />
+                        </div>
+                        <div className="device-meta">
+                          <div className="device-name-row">
+                            <span className="device-name">{layout.name}</span>
+                            <span className="status-pill offline">
+                              {isLandscape ? "横屏" : "竖屏"}
+                            </span>
+                          </div>
+                          <div className="device-sub">
+                            <span>
+                              网格 {layout.cols} × {layout.rows}
+                            </span>
+                            <span>·</span>
+                            <span>{layout.slots.length} 个按钮</span>
+                            <span>·</span>
+                            <span>更新于 {formatLastSeen(layout.updatedAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="device-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => onSelectLayout(layout)}
+                        >
+                          <Edit3 size={14} />
+                          <span>编辑</span>
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => onDuplicateLayout(layout)}
+                          title="复制配置"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => onDeleteLayout(layout.id)}
+                          title="删除配置"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
