@@ -1,6 +1,6 @@
 {
-  "name": "SmartDeck",
-  "short_name": "SmartDeck",
+  "name": "Deckify",
+  "short_name": "Deckify",
   "start_url": "/deck",
   "display": "standalone",
   "background_color": "#0b0f19",

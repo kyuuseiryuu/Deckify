@@ -40,8 +40,8 @@ pub async fn start_server(state: AppState, port: u16) {
 
 async fn serve_manifest() -> Response {
     let manifest = serde_json::json!({
-        "name": "SmartDeck",
-        "short_name": "SmartDeck",
+        "name": "Deckify",
+        "short_name": "Deckify",
         "start_url": "/deck",
         "scope": "/deck",
         "display": "standalone",

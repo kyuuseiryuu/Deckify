@@ -14,6 +14,7 @@ export interface MacroStep {
 export type SlotAction =
   | { type: "app"; name: string; path: string }
   | { type: "hotkey"; modifiers: string[]; key: string; repeatCount?: number }
+  | { type: "text"; text: string; autoEnter?: boolean }
   | { type: "image"; note: string; refreshInterval?: number }
   | { type: "monitor"; metric: "cpu" | "memory" | "network" }
   | { type: "switchLayout"; layoutId: string }

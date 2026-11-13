@@ -13,6 +13,7 @@ import {
   Volume2,
   Webhook,
   Layers,
+  Type,
 } from "lucide-react";
 import type { DeckSlot, LayoutConfig, SystemStats, WsServerMsg } from "../types";
 import { computeGridLayout } from "../utils/grid";
@@ -321,7 +322,7 @@ export function DeckPage() {
     return (
       <div className="deck-page">
         <div className="deck-token-prompt">
-          <h2>输入配对码连接 SmartDeck</h2>
+          <h2>输入配对码连接 Deckify</h2>
           <p>初次连接请输入桌面端主页显示的配对码：</p>
           {authError && <p className="pairing-error-text">{authError}</p>}
           <div className="deck-token-row">
@@ -508,6 +509,7 @@ export function DeckPage() {
                     ) : (
                       <div className="deck-slot-fallback-icon">
                         {slot.action.type === "hotkey" && <Keyboard size={24} />}
+                        {slot.action.type === "text" && <Type size={24} />}
                         {slot.action.type === "image" && <ImageIcon size={24} />}
                         {slot.action.type === "switchLayout" && (
                           <FolderOutput size={24} />

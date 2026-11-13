@@ -1,12 +1,12 @@
 [package]
-name = "smartdeck"
+name = "deckify"
 version = "0.1.0"
-description = "Turn mobile devices into a customizable SmartDeck controller"
-authors = ["SmartDeck"]
+description = "Turn mobile devices into a customizable Deckify controller"
+authors = ["Deckify"]
 edition = "2021"
 
 [lib]
-name = "smartdeck_lib"
+name = "deckify_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

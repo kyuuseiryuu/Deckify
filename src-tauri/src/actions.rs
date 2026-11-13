@@ -74,7 +74,7 @@ where
     app.run_on_main_thread(move || {
         if !is_accessibility_trusted(true) {
             let _ = tx.send(Err(
-                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 SmartDeck（重新打包后需先移除旧项再重新添加）".into(),
+                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 Deckify（重新打包后需先移除旧项再重新添加）".into(),
             ));
             return;
         }
@@ -118,14 +118,16 @@ pub fn execute_action(app: &tauri::AppHandle, action: &SlotAction) -> Result<(),
             key,
             repeat_count,
         } => trigger_hotkey(app, modifiers, key, *repeat_count),
+        SlotAction::Text { text, auto_enter } => trigger_text(app, text, *auto_enter),
         SlotAction::Image { .. }
         | SlotAction::Monitor { .. }
         | SlotAction::SwitchLayout { .. } => Ok(()),
         SlotAction::Media { control } => trigger_media(app, control),
         SlotAction::Webhook { url, method, body } => trigger_webhook(url, method, body),
         SlotAction::Macro { steps } => {
-            for step in steps {
-                execute_action(app, &step.action)?;
+            for (idx, step) in steps.iter().enumerate() {
+                execute_action(app, &step.action)
+                    .map_err(|e| format!("步骤 {} 执行失败: {}", idx + 1, e))?;
                 if step.delay_ms > 0 {
                     thread::sleep(Duration::from_millis(step.delay_ms.min(10_000)));
                 }
@@ -294,12 +296,12 @@ fn trigger_macos_hotkey(
         }
     };
 
-    let count = repeat_count.clamp(1, 5);
+    let count = repeat_count.max(1);
     let (tx, rx) = mpsc::channel();
     app.run_on_main_thread(move || {
         if !is_accessibility_trusted(true) {
             let _ = tx.send(Err(
-                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 SmartDeck（重新打包后需先移除旧项再重新添加）".into(),
+                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 Deckify（重新打包后需先移除旧项再重新添加）".into(),
             ));
             return;
         }
@@ -358,6 +360,25 @@ fn trigger_macos_hotkey(
         .unwrap_or_else(|e| Err(format!("Main thread reply error: {}", e)))
 }
 
+fn trigger_text(app: &tauri::AppHandle, text: &str, auto_enter: bool) -> Result<(), String> {
+    if text.is_empty() && !auto_enter {
+        return Err("文本内容不能为空".into());
+    }
+    if !text.is_empty() {
+        let content = text.to_string();
+        run_enigo_on_main(app, move |enigo| {
+            enigo
+                .text(&content)
+                .map_err(|e| format!("文本输入失败: {}", e))
+        })?;
+    }
+    if auto_enter {
+        thread::sleep(Duration::from_millis(20));
+        trigger_hotkey(app, &[], "enter", 1)?;
+    }
+    Ok(())
+}
+
 fn trigger_hotkey(
     app: &tauri::AppHandle,
     modifiers: &[String],
@@ -389,7 +410,7 @@ fn trigger_hotkey(
         Some(parse_main_key(trimmed_key)?)
     };
 
-    let count = repeat_count.clamp(1, 5);
+    let count = repeat_count.max(1);
     for i in 0..count {
         let mods_clone = mod_keys.clone();
         run_enigo_on_main(app, move |enigo| {

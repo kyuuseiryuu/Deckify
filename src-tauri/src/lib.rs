@@ -154,7 +154,7 @@ pub fn run() {
             let data_dir = app
                 .path()
                 .app_data_dir()
-                .unwrap_or_else(|_| PathBuf::from(".smartdeck-data"));
+                .unwrap_or_else(|_| PathBuf::from(".deckify-data"));
             let lan_ip = local_ip_address::local_ip()
                 .map(|ip| ip.to_string())
                 .unwrap_or_else(|_| "127.0.0.1".to_string());
@@ -221,12 +221,12 @@ pub fn run() {
             });
 
             let show_i = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
-            let quit_i = MenuItem::with_id(app, "quit", "退出 SmartDeck", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "退出 Deckify", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let mut tray_builder = TrayIconBuilder::new()
                 .menu(&menu)
-                .tooltip("SmartDeck 正在后台运行")
+                .tooltip("Deckify 正在后台运行")
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(win) = app.get_webview_window("main") {
@@ -283,5 +283,5 @@ pub fn run() {
             open_accessibility_settings,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running SmartDeck");
+        .expect("error while running Deckify");
 }

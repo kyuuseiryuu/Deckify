@@ -23,6 +23,7 @@ import {
   Webhook,
   Layers,
   RefreshCw,
+  Type,
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -42,6 +43,8 @@ import type {
 import { canPlaceSpan, computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
 import type { ThemeMode } from "../utils/theme";
+import { ActionConfigFields } from "./ActionConfigFields";
+import { MacroStepsEditor } from "./MacroStepsEditor";
 import { MonitorTile } from "./MonitorTile";
 
 interface EditorPageProps {
@@ -86,7 +89,6 @@ export function EditorPage({
   const [appQuery, setAppQuery] = useState("");
   const [paletteTab, setPaletteTab] = useState<"apps" | "actions">("apps");
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
-  const [recordingKey, setRecordingKey] = useState(false);
   const [syncState, setSyncState] = useState<"saved" | "saving">("saved");
   const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -227,7 +229,8 @@ export function EditorPage({
       | "switchLayout"
       | "media"
       | "webhook"
-      | "macro",
+      | "macro"
+      | "text",
     targetIndex?: number
   ) => {
     const idx = targetIndex ?? selectedIndex;
@@ -239,6 +242,11 @@ export function EditorPage({
         label: "快捷键",
         color: "#1d4ed8",
         action: { type: "hotkey", modifiers: ["cmd"], key: "c", repeatCount: 1 },
+      },
+      text: {
+        label: "输入文本",
+        color: "#0284c7",
+        action: { type: "text", text: "", autoEnter: false },
       },
       image: {
         label: "",
@@ -345,44 +353,6 @@ export function EditorPage({
     setSelectedIndex(toIndex);
     commitDraft({ ...draft, slots: nextSlots });
   };
-
-  useEffect(() => {
-    if (!recordingKey || !selectedSlot) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const rawKey = e.key;
-      if (["Meta", "Control", "Alt", "Shift"].includes(rawKey)) {
-        return;
-      }
-      const modifiers: string[] = [];
-      if (e.metaKey) modifiers.push("cmd");
-      if (e.ctrlKey) modifiers.push("ctrl");
-      if (e.altKey) modifiers.push("alt");
-      if (e.shiftKey) modifiers.push("shift");
-
-      const normalizedKey = rawKey === " " ? "space" : rawKey.toLowerCase();
-      upsertSlot(selectedIndex, {
-        ...selectedSlot,
-        action: {
-          type: "hotkey",
-          modifiers,
-          key: normalizedKey,
-        },
-      });
-      setRecordingKey(false);
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("keyup", onKeyUp, true);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("keyup", onKeyUp, true);
-    };
-  }, [recordingKey, selectedSlot, selectedIndex]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -609,6 +579,16 @@ export function EditorPage({
                 <div>
                   <div className="tpl-title">快捷键</div>
                   <div className="tpl-desc">模拟组合键，如 Cmd+Shift+4</div>
+                </div>
+              </button>
+              <button
+                className="action-template-btn"
+                onClick={() => createTemplateSlot("text")}
+              >
+                <Type size={18} />
+                <div>
+                  <div className="tpl-title">快捷输入文本</div>
+                  <div className="tpl-desc">自动键入预设文本，支持回车</div>
                 </div>
               </button>
               <button
@@ -864,6 +844,7 @@ export function EditorPage({
                             ) : (
                               <div className="editor-slot-fallback">
                                 {slot.action.type === "hotkey" && <Keyboard size={20} />}
+                                {slot.action.type === "text" && <Type size={20} />}
                                 {slot.action.type === "image" && <ImageIcon size={20} />}
                                 {slot.action.type === "switchLayout" && <FolderOutput size={20} />}
                                 {slot.action.type === "media" && <Volume2 size={20} />}
@@ -1108,138 +1089,17 @@ export function EditorPage({
                 </div>
               </div>
 
-              {selectedSlot.action.type === "app" && (
-                <div className="form-group">
-                  <label>启动应用</label>
-                  <div className="readonly-box">{selectedSlot.action.path}</div>
-                </div>
-              )}
-
-              {selectedSlot.action.type === "hotkey" && (
-                <div className="form-group">
-                  <label>快捷键组合</label>
-                  <button
-                    className={`record-key-btn ${recordingKey ? "recording" : ""}`}
-                    onClick={() => setRecordingKey((v) => !v)}
-                  >
-                    {recordingKey
-                      ? "请按下组合键（或下方手动选择）..."
-                      : [...selectedSlot.action.modifiers, selectedSlot.action.key]
-                          .filter(Boolean)
-                          .join(" + ")
-                          .toUpperCase()}
-                  </button>
-
-                  <div className="modifier-pills">
-                    {[
-                      { id: "cmd", label: "⌘ Cmd" },
-                      { id: "ctrl", label: "⌃ Ctrl" },
-                      { id: "alt", label: "⌥ Alt" },
-                      { id: "shift", label: "⇧ Shift" },
-                    ].map((mod) => {
-                      const hotkey = selectedSlot.action as {
-                        type: "hotkey";
-                        modifiers: string[];
-                        key: string;
-                      };
-                      const active = hotkey.modifiers.includes(mod.id);
-                      return (
-                        <button
-                          key={mod.id}
-                          type="button"
-                          className={`mod-pill ${active ? "active" : ""}`}
-                          onClick={() => {
-                            const nextMods = active
-                              ? hotkey.modifiers.filter((m) => m !== mod.id)
-                              : [...hotkey.modifiers, mod.id];
-                            upsertSlot(selectedIndex, {
-                              ...selectedSlot,
-                              action: {
-                                type: "hotkey",
-                                modifiers: nextMods,
-                                key: hotkey.key,
-                              },
-                            });
-                          }}
-                        >
-                          {mod.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="hotkey-manual-row">
-                    <label>主键</label>
-                    <select
-                      value={selectedSlot.action.key || "none"}
-                      onChange={(e) =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          action: {
-                            type: "hotkey",
-                            modifiers:
-                              selectedSlot.action.type === "hotkey"
-                                ? selectedSlot.action.modifiers
-                                : [],
-                            key: e.target.value === "none" ? "" : e.target.value,
-                            repeatCount:
-                              selectedSlot.action.type === "hotkey"
-                                ? selectedSlot.action.repeatCount ?? 1
-                                : 1,
-                          },
-                        })
-                      }
-                    >
-                      <option value="none">无主键（仅修饰键）</option>
-                      {[
-                        "`",
-                        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-                        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-                        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-                        "space", "enter", "tab", "escape", "backspace", "delete",
-                        "up", "down", "left", "right",
-                        "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
-                      ].map((k) => (
-                        <option key={k} value={k}>
-                          {k.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="hotkey-manual-row">
-                    <label>连续触发</label>
-                    <select
-                      value={selectedSlot.action.repeatCount ?? 1}
-                      onChange={(e) =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          action: {
-                            type: "hotkey",
-                            modifiers:
-                              selectedSlot.action.type === "hotkey"
-                                ? selectedSlot.action.modifiers
-                                : [],
-                            key:
-                              selectedSlot.action.type === "hotkey"
-                                ? selectedSlot.action.key
-                                : "",
-                            repeatCount: Number(e.target.value) || 1,
-                          },
-                        })
-                      }
-                    >
-                      <option value={1}>1 次（单次）</option>
-                      <option value={2}>2 次（双击，如连按两次 Ctrl）</option>
-                      <option value={3}>3 次（三连击）</option>
-                    </select>
-                  </div>
-
-                  <span className="hint-text">
-                    系统保留快捷键（如 Cmd+W / Cmd+Space / Cmd+Tab）请直接使用上方修饰键与主键选择器配置
-                  </span>
-                </div>
-              )}
+              <ActionConfigFields
+                action={selectedSlot.action}
+                localApps={apps}
+                onChange={(nextAction, suggestedLabel) =>
+                  upsertSlot(selectedIndex, {
+                    ...selectedSlot,
+                    label: suggestedLabel ?? selectedSlot.label,
+                    action: nextAction,
+                  })
+                }
+              />
 
               {selectedSlot.action.type === "image" && (
                 <>
@@ -1313,321 +1173,17 @@ export function EditorPage({
                 </div>
               )}
 
-              {selectedSlot.action.type === "media" && (
-                <div className="form-group">
-                  <label>媒体 / 音量控制</label>
-                  <select
-                    className="select-input"
-                    value={selectedSlot.action.control}
-                    onChange={(e) => {
-                      const control = e.target.value as
-                        | "play_pause"
-                        | "next"
-                        | "prev"
-                        | "vol_up"
-                        | "vol_down"
-                        | "mute";
-                      const labelMap: Record<typeof control, string> = {
-                        play_pause: "播放/暂停",
-                        next: "下一曲",
-                        prev: "上一曲",
-                        vol_up: "音量 +",
-                        vol_down: "音量 -",
-                        mute: "静音",
-                      };
-                      upsertSlot(selectedIndex, {
-                        ...selectedSlot,
-                        label: labelMap[control],
-                        action: { type: "media", control },
-                      });
-                    }}
-                  >
-                    <option value="play_pause">播放 / 暂停</option>
-                    <option value="next">下一曲</option>
-                    <option value="prev">上一曲</option>
-                    <option value="vol_up">音量增大</option>
-                    <option value="vol_down">音量减小</option>
-                    <option value="mute">静音切换</option>
-                  </select>
-                </div>
-              )}
-
-              {selectedSlot.action.type === "webhook" && (
-                <>
-                  <div className="form-group">
-                    <label>请求方法 & URL</label>
-                    <div className="hotkey-manual-row">
-                      <select
-                        value={selectedSlot.action.method}
-                        onChange={(e) =>
-                          upsertSlot(selectedIndex, {
-                            ...selectedSlot,
-                            action: {
-                              type: "webhook",
-                              method: e.target.value,
-                              url:
-                                selectedSlot.action.type === "webhook"
-                                  ? selectedSlot.action.url
-                                  : "",
-                              body:
-                                selectedSlot.action.type === "webhook"
-                                  ? selectedSlot.action.body
-                                  : "",
-                            },
-                          })
-                        }
-                      >
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                      </select>
-                      <input
-                        style={{ flex: 2 }}
-                        value={selectedSlot.action.url}
-                        onChange={(e) =>
-                          upsertSlot(selectedIndex, {
-                            ...selectedSlot,
-                            action: {
-                              type: "webhook",
-                              method:
-                                selectedSlot.action.type === "webhook"
-                                  ? selectedSlot.action.method
-                                  : "GET",
-                              url: e.target.value,
-                              body:
-                                selectedSlot.action.type === "webhook"
-                                  ? selectedSlot.action.body
-                                  : "",
-                            },
-                          })
-                        }
-                        placeholder="https://..."
-                      />
-                    </div>
-                  </div>
-                  {selectedSlot.action.method !== "GET" && (
-                    <div className="form-group">
-                      <label>JSON Body</label>
-                      <textarea
-                        rows={2}
-                        value={selectedSlot.action.body}
-                        onChange={(e) =>
-                          upsertSlot(selectedIndex, {
-                            ...selectedSlot,
-                            action: {
-                              type: "webhook",
-                              method:
-                                selectedSlot.action.type === "webhook"
-                                  ? selectedSlot.action.method
-                                  : "POST",
-                              url:
-                                selectedSlot.action.type === "webhook"
-                                  ? selectedSlot.action.url
-                                  : "",
-                              body: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-
               {selectedSlot.action.type === "macro" && (
-                <div className="form-group">
-                  <label>宏步骤 ({selectedSlot.action.steps.length})</label>
-                  <div className="macro-steps-list">
-                    {selectedSlot.action.steps.map((step, sIdx) => (
-                      <div key={sIdx} className="macro-step-card">
-                        <div className="macro-step-head">
-                          <span>步骤 {sIdx + 1}</span>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => {
-                              if (selectedSlot.action.type !== "macro") return;
-                              upsertSlot(selectedIndex, {
-                                ...selectedSlot,
-                                action: {
-                                  type: "macro",
-                                  steps: selectedSlot.action.steps.filter(
-                                    (_, i) => i !== sIdx
-                                  ),
-                                },
-                              });
-                            }}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                        <select
-                          className="select-input"
-                          value={step.action.type}
-                          onChange={(e) => {
-                            if (selectedSlot.action.type !== "macro") return;
-                            const nextType = e.target.value;
-                            const defaultAct: SlotAction =
-                              nextType === "hotkey"
-                                ? { type: "hotkey", modifiers: ["cmd"], key: "c", repeatCount: 1 }
-                                : nextType === "media"
-                                ? { type: "media", control: "play_pause" }
-                                : nextType === "url"
-                                ? { type: "url", url: "https://google.com" }
-                                : { type: "command", command: "echo step" };
-                            const nextSteps = selectedSlot.action.steps.map((st, i) =>
-                              i === sIdx ? { ...st, action: defaultAct } : st
-                            );
-                            upsertSlot(selectedIndex, {
-                              ...selectedSlot,
-                              action: { type: "macro", steps: nextSteps },
-                            });
-                          }}
-                        >
-                          <option value="hotkey">快捷键</option>
-                          <option value="media">媒体控制</option>
-                          <option value="url">打开网址</option>
-                          <option value="command">Shell 命令</option>
-                        </select>
-                        {step.action.type === "hotkey" && (
-                          <input
-                            placeholder="按键，如 c 或 space"
-                            value={step.action.key}
-                            onChange={(e) => {
-                              if (selectedSlot.action.type !== "macro") return;
-                              const nextSteps = selectedSlot.action.steps.map((st, i) =>
-                                i === sIdx && st.action.type === "hotkey"
-                                  ? {
-                                      ...st,
-                                      action: { ...st.action, key: e.target.value },
-                                    }
-                                  : st
-                              );
-                              upsertSlot(selectedIndex, {
-                                ...selectedSlot,
-                                action: { type: "macro", steps: nextSteps },
-                              });
-                            }}
-                          />
-                        )}
-                        {step.action.type === "command" && (
-                          <input
-                            placeholder="Shell 命令"
-                            value={step.action.command}
-                            onChange={(e) => {
-                              if (selectedSlot.action.type !== "macro") return;
-                              const nextSteps = selectedSlot.action.steps.map((st, i) =>
-                                i === sIdx && st.action.type === "command"
-                                  ? {
-                                      ...st,
-                                      action: { ...st.action, command: e.target.value },
-                                    }
-                                  : st
-                              );
-                              upsertSlot(selectedIndex, {
-                                ...selectedSlot,
-                                action: { type: "macro", steps: nextSteps },
-                              });
-                            }}
-                          />
-                        )}
-                        {step.action.type === "url" && (
-                          <input
-                            placeholder="https://..."
-                            value={step.action.url}
-                            onChange={(e) => {
-                              if (selectedSlot.action.type !== "macro") return;
-                              const nextSteps = selectedSlot.action.steps.map((st, i) =>
-                                i === sIdx && st.action.type === "url"
-                                  ? {
-                                      ...st,
-                                      action: { ...st.action, url: e.target.value },
-                                    }
-                                  : st
-                              );
-                              upsertSlot(selectedIndex, {
-                                ...selectedSlot,
-                                action: { type: "macro", steps: nextSteps },
-                              });
-                            }}
-                          />
-                        )}
-                        <div className="hotkey-manual-row">
-                          <label>执行后延迟 (ms)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            max={10000}
-                            value={step.delayMs}
-                            onChange={(e) => {
-                              if (selectedSlot.action.type !== "macro") return;
-                              const nextSteps = selectedSlot.action.steps.map((st, i) =>
-                                i === sIdx
-                                  ? { ...st, delayMs: Number(e.target.value) || 0 }
-                                  : st
-                              );
-                              upsertSlot(selectedIndex, {
-                                ...selectedSlot,
-                                action: { type: "macro", steps: nextSteps },
-                              });
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => {
-                        if (selectedSlot.action.type !== "macro") return;
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          action: {
-                            type: "macro",
-                            steps: [
-                              ...selectedSlot.action.steps,
-                              {
-                                action: { type: "command", command: "echo done" },
-                                delayMs: 200,
-                              },
-                            ],
-                          },
-                        });
-                      }}
-                    >
-                      <Plus size={14} /> 添加步骤
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedSlot.action.type === "url" && (
-                <div className="form-group">
-                  <label>目标网址</label>
-                  <input
-                    value={selectedSlot.action.url}
-                    onChange={(e) =>
-                      upsertSlot(selectedIndex, {
-                        ...selectedSlot,
-                        action: { type: "url", url: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-              )}
-
-              {selectedSlot.action.type === "command" && (
-                <div className="form-group">
-                  <label>Shell 命令</label>
-                  <textarea
-                    rows={3}
-                    value={selectedSlot.action.command}
-                    onChange={(e) =>
-                      upsertSlot(selectedIndex, {
-                        ...selectedSlot,
-                        action: { type: "command", command: e.target.value },
-                      })
-                    }
-                  />
-                </div>
+                <MacroStepsEditor
+                  steps={selectedSlot.action.steps}
+                  localApps={apps}
+                  onChange={(nextSteps) =>
+                    upsertSlot(selectedIndex, {
+                      ...selectedSlot,
+                      action: { type: "macro", steps: nextSteps },
+                    })
+                  }
+                />
               )}
 
               <div className="inspector-actions">

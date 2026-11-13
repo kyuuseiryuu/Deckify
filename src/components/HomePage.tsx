@@ -96,7 +96,7 @@ export function HomePage({
     <div className="home-container">
       <header className="home-header">
         <div>
-          <h1 className="app-title">SmartDeck</h1>
+          <h1 className="app-title">Deckify</h1>
           <p className="app-subtitle">
             在桌面端创建与编辑布局配置，移动端扫码后可自由选择并实时同步切换
           </p>
@@ -128,7 +128,7 @@ export function HomePage({
             <div>
               <strong>未检测到 macOS 辅助功能权限</strong>
               <p>
-                快捷键与媒体控制（播放/暂停、切歌）需要辅助功能权限。请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 SmartDeck（若重新打包过，请先用「-」移除旧的 SmartDeck 再重新添加或开关）。
+                快捷键与媒体控制（播放/暂停、切歌）需要辅助功能权限。请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 Deckify（若重新打包过，请先用「-」移除旧的 Deckify 再重新添加或开关）。
               </p>
             </div>
           </div>
@@ -236,7 +236,7 @@ export function HomePage({
               <div className="empty-devices">
                 <LayoutGrid size={36} className="empty-icon" />
                 <p>暂无布局配置</p>
-                <span>点击右上角「创建配置」开始设计你的 SmartDeck 面板</span>
+                <span>点击右上角「创建配置」开始设计你的 Deckify 面板</span>
               </div>
             ) : (
               <div className="device-list">

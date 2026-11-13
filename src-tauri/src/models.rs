@@ -31,6 +31,11 @@ pub enum SlotAction {
         #[serde(default = "default_span", rename = "repeatCount")]
         repeat_count: usize,
     },
+    Text {
+        text: String,
+        #[serde(default, rename = "autoEnter")]
+        auto_enter: bool,
+    },
     Image {
         #[serde(default)]
         note: String,
