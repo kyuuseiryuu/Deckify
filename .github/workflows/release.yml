@@ -1,0 +1,87 @@
+name: Release macOS
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Universal macOS .app and .dmg
+        run: npm run tauri build -- --target universal-apple-darwin --bundles app,dmg
+
+      - name: Prepare release artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle"
+          OUT_DIR="release-artifacts"
+          mkdir -p "$OUT_DIR"
+
+          APP_PATH=$(find "$BUNDLE_DIR/macos" -maxdepth 1 -name "*.app" | head -n 1)
+          DMG_PATH=$(find "$BUNDLE_DIR/dmg" -maxdepth 1 -name "*.dmg" | head -n 1)
+
+          if [[ -z "$APP_PATH" || -z "$DMG_PATH" ]]; then
+            echo "Missing .app or .dmg artifact"
+            ls -la "$BUNDLE_DIR/macos" "$BUNDLE_DIR/dmg" || true
+            exit 1
+          fi
+
+          APP_NAME=$(basename "$APP_PATH" .app)
+          VERSION=$(node -p "require('./package.json').version")
+
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$OUT_DIR/${APP_NAME}_${VERSION}_universal.app.zip"
+          cp "$DMG_PATH" "$OUT_DIR/${APP_NAME}_${VERSION}_universal.dmg"
+
+          ls -lh "$OUT_DIR"
+
+      - name: Upload GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-artifacts/*.app.zip
+            release-artifacts/*.dmg
+
+      - name: Upload workflow artifacts (manual run without tag)
+        if: "!startsWith(github.ref, 'refs/tags/v') && inputs.tag == ''"
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deckify-macOS-Universal
+          path: release-artifacts/*
