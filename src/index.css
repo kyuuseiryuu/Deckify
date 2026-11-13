@@ -746,6 +746,31 @@ textarea {
   border-radius: 8px;
   padding: 7px 10px;
   font-size: 13px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.webhook-headers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.webhook-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.webhook-header-row input {
+  min-width: 0;
+  flex: 1;
 }
 
 .color-row {

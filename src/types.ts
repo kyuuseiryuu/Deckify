@@ -6,6 +6,11 @@ export interface ServerInfo {
   mobileUrl: string;
 }
 
+export interface WebhookHeader {
+  key: string;
+  value: string;
+}
+
 export interface MacroStep {
   action: SlotAction;
   delayMs: number;
@@ -22,7 +27,13 @@ export type SlotAction =
       type: "media";
       control: "play_pause" | "next" | "prev" | "vol_up" | "vol_down" | "mute";
     }
-  | { type: "webhook"; url: string; method: string; body: string }
+  | {
+      type: "webhook";
+      url: string;
+      method: string;
+      headers?: WebhookHeader[];
+      body: string;
+    }
   | { type: "macro"; steps: MacroStep[] }
   | { type: "url"; url: string }
   | { type: "command"; command: string };

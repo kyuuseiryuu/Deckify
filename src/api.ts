@@ -55,6 +55,10 @@ export async function openAccessibilitySettings(): Promise<void> {
   return invoke<void>("open_accessibility_settings");
 }
 
+export async function openExternalUrl(url: string): Promise<void> {
+  return invoke<void>("open_external_url", { url });
+}
+
 export function resolveIconUrl(
   iconPath: string | null | undefined,
   serverPort?: number

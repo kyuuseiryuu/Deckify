@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import type { LocalAppInfo, SlotAction } from "../types";
 
 export const MODIFIER_OPTIONS = [
@@ -326,6 +327,16 @@ export function ActionConfigFields({
   }
 
   if (action.type === "webhook") {
+    const headers = action.headers ?? [];
+    const updateWebhook = (patch: Partial<typeof action>) =>
+      onChange({
+        type: "webhook",
+        method: patch.method ?? action.method,
+        url: patch.url ?? action.url,
+        headers: patch.headers ?? headers,
+        body: patch.body ?? action.body,
+      });
+
     return (
       <>
         <div className="form-group">
@@ -333,14 +344,7 @@ export function ActionConfigFields({
           <div className="hotkey-manual-row">
             <select
               value={action.method}
-              onChange={(e) =>
-                onChange({
-                  type: "webhook",
-                  method: e.target.value,
-                  url: action.url,
-                  body: action.body,
-                })
-              }
+              onChange={(e) => updateWebhook({ method: e.target.value })}
             >
               <option value="GET">GET</option>
               <option value="POST">POST</option>
@@ -349,33 +353,75 @@ export function ActionConfigFields({
             <input
               style={{ flex: 2 }}
               value={action.url}
-              onChange={(e) =>
-                onChange({
-                  type: "webhook",
-                  method: action.method,
-                  url: e.target.value,
-                  body: action.body,
-                })
-              }
+              onChange={(e) => updateWebhook({ url: e.target.value })}
               placeholder="https://..."
             />
           </div>
         </div>
+
+        <div className="form-group">
+          <label>请求头 (Headers)</label>
+          <div className="webhook-headers-list">
+            {headers.map((h, idx) => (
+              <div key={idx} className="webhook-header-row">
+                <input
+                  value={h.key}
+                  onChange={(e) =>
+                    updateWebhook({
+                      headers: headers.map((item, i) =>
+                        i === idx ? { ...item, key: e.target.value } : item
+                      ),
+                    })
+                  }
+                  placeholder="Key (如 Authorization)"
+                />
+                <input
+                  value={h.value}
+                  onChange={(e) =>
+                    updateWebhook({
+                      headers: headers.map((item, i) =>
+                        i === idx ? { ...item, value: e.target.value } : item
+                      ),
+                    })
+                  }
+                  placeholder="Value"
+                />
+                <button
+                  type="button"
+                  className="btn btn-danger btn-xs"
+                  onClick={() =>
+                    updateWebhook({
+                      headers: headers.filter((_, i) => i !== idx),
+                    })
+                  }
+                  title="删除 Header"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() =>
+                updateWebhook({ headers: [...headers, { key: "", value: "" }] })
+              }
+            >
+              <Plus size={12} />
+              <span>添加 Header</span>
+            </button>
+          </div>
+        </div>
+
         {action.method !== "GET" && (
           <div className="form-group">
             {!compact && <label>JSON Body</label>}
             <textarea
-              rows={2}
+              className="webhook-body-textarea"
+              rows={3}
               value={action.body}
-              onChange={(e) =>
-                onChange({
-                  type: "webhook",
-                  method: action.method,
-                  url: action.url,
-                  body: e.target.value,
-                })
-              }
-              placeholder='{"event":"deckify"}'
+              onChange={(e) => updateWebhook({ body: e.target.value })}
+              placeholder='{"event":"smartdeck"}'
             />
           </div>
         )}

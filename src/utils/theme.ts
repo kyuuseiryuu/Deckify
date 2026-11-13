@@ -14,8 +14,11 @@ export function getInitialTheme(): ThemeMode {
 
 export function applyTheme(theme: ThemeMode) {
   document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.style.colorScheme = theme;
   localStorage.setItem(THEME_KEY, theme);
 }
+
+applyTheme(getInitialTheme());
 
 export function useTheme(): [ThemeMode, () => void] {
   const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
@@ -23,6 +26,16 @@ export function useTheme(): [ThemeMode, () => void] {
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === THEME_KEY && (e.newValue === "light" || e.newValue === "dark")) {
+        setTheme(e.newValue);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));

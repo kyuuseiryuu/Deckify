@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 
-use crate::models::SlotAction;
+use crate::models::{SlotAction, WebhookHeader};
 
 #[cfg(target_os = "macos")]
 pub fn is_accessibility_trusted(prompt: bool) -> bool {
@@ -123,7 +123,12 @@ pub fn execute_action(app: &tauri::AppHandle, action: &SlotAction) -> Result<(),
         | SlotAction::Monitor { .. }
         | SlotAction::SwitchLayout { .. } => Ok(()),
         SlotAction::Media { control } => trigger_media(app, control),
-        SlotAction::Webhook { url, method, body } => trigger_webhook(url, method, body),
+        SlotAction::Webhook {
+            url,
+            method,
+            headers,
+            body,
+        } => trigger_webhook(url, method, headers, body),
         SlotAction::Macro { steps } => {
             for (idx, step) in steps.iter().enumerate() {
                 execute_action(app, &step.action)
@@ -485,7 +490,12 @@ fn trigger_media(app: &tauri::AppHandle, control: &str) -> Result<(), String> {
     }
 }
 
-fn trigger_webhook(url: &str, method: &str, body: &str) -> Result<(), String> {
+fn trigger_webhook(
+    url: &str,
+    method: &str,
+    headers: &[WebhookHeader],
+    body: &str,
+) -> Result<(), String> {
     let clean_url = url.trim();
     if clean_url.is_empty() {
         return Err("Webhook URL 不能为空".into());
@@ -505,11 +515,23 @@ fn trigger_webhook(url: &str, method: &str, body: &str) -> Result<(), String> {
         .arg("-X")
         .arg(&http_method);
 
+    let mut has_content_type = false;
+    for h in headers {
+        let k = h.key.trim();
+        let v = h.value.trim();
+        if !k.is_empty() {
+            if k.eq_ignore_ascii_case("content-type") {
+                has_content_type = true;
+            }
+            cmd.arg("-H").arg(format!("{}: {}", k, v));
+        }
+    }
+
     if !body.trim().is_empty() && http_method != "GET" {
-        cmd.arg("-H")
-            .arg("Content-Type: application/json")
-            .arg("-d")
-            .arg(body);
+        if !has_content_type {
+            cmd.arg("-H").arg("Content-Type: application/json");
+        }
+        cmd.arg("-d").arg(body);
     }
 
     let out = cmd

@@ -16,6 +16,7 @@ import {
 import {
   checkAccessibilityPermission,
   openAccessibilitySettings,
+  openExternalUrl,
 } from "../api";
 import type { LayoutConfig, ServerInfo } from "../types";
 import type { ThemeMode } from "../utils/theme";
@@ -178,16 +179,17 @@ export function HomePage({
                   {copied ? <Check size={15} /> : <Copy size={15} />}
                   <span>{copied ? "已复制" : "复制"}</span>
                 </button>
-                <a
+                <button
+                  type="button"
                   className="btn btn-secondary"
-                  href={`http://127.0.0.1:${serverInfo.port}/deck`}
-                  target="_blank"
-                  rel="noreferrer"
+                  onClick={() =>
+                    openExternalUrl(`http://127.0.0.1:${serverInfo.port}/deck`)
+                  }
                   title="在本机浏览器模拟移动端"
                 >
                   <ExternalLink size={15} />
                   <span>本机预览</span>
-                </a>
+                </button>
               </div>
 
               <div className="pairing-box">

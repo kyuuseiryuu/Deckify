@@ -147,6 +147,18 @@ fn open_accessibility_settings() -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -281,6 +293,7 @@ pub fn run() {
             trigger_slot_action,
             check_accessibility_permission,
             open_accessibility_settings,
+            open_external_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Deckify");

@@ -3,6 +3,8 @@ import {
   Wifi,
   WifiOff,
   Sun,
+  Moon,
+  Lightbulb,
   BatteryCharging,
   Keyboard,
   Image as ImageIcon,
@@ -25,7 +27,7 @@ const SELECTED_LAYOUT_KEY = "smartdeck_selected_layout_id";
 const PAIRING_CODE_KEY = "smartdeck_pairing_code";
 
 export function DeckPage() {
-  useTheme();
+  const [theme, toggleTheme] = useTheme();
   const [connected, setConnected] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -49,9 +51,7 @@ export function DeckPage() {
     return localStorage.getItem(PAIRING_CODE_KEY) ?? "";
   });
   const [paired, setPaired] = useState(false);
-  const [verifying, setVerifying] = useState(() =>
-    Boolean(localStorage.getItem(PAIRING_CODE_KEY))
-  );
+  const [verifying, setVerifying] = useState(false);
 
   const requestWakeLock = async () => {
     try {
@@ -131,8 +131,10 @@ export function DeckPage() {
 
     let closed = false;
     let authFailed = false;
+    let isPaired = false;
     let reconnectTimer: number | undefined;
     let pingTimer: number | undefined;
+    let verifyTimeout: number | undefined;
 
     const connect = () => {
       if (closed || authFailed) return;
@@ -140,6 +142,13 @@ export function DeckPage() {
       const wsUrl = `${proto}//${window.location.host}/ws`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+
+      if (verifyTimeout) clearTimeout(verifyTimeout);
+      verifyTimeout = window.setTimeout(() => {
+        if (!closed && !isPaired) {
+          setVerifying(false);
+        }
+      }, 4000);
 
       const sendRegister = () => {
         if (ws.readyState !== WebSocket.OPEN) return;
@@ -176,6 +185,8 @@ export function DeckPage() {
             setPairingCode("");
             ws.close();
           } else if (msg.type === "layoutsList") {
+            isPaired = true;
+            if (verifyTimeout) clearTimeout(verifyTimeout);
             localStorage.setItem(PAIRING_CODE_KEY, pairingCode);
             setPaired(true);
             setVerifying(false);
@@ -222,7 +233,11 @@ export function DeckPage() {
 
       ws.onclose = () => {
         setConnected(false);
+        if (!isPaired) {
+          setVerifying(false);
+        }
         if (pingTimer) clearInterval(pingTimer);
+        if (verifyTimeout) clearTimeout(verifyTimeout);
         if (!closed && !authFailed) {
           reconnectTimer = window.setTimeout(connect, 2000);
         }
@@ -247,6 +262,7 @@ export function DeckPage() {
       closed = true;
       clearInterval(tickTimer);
       if (pingTimer) clearInterval(pingTimer);
+      if (verifyTimeout) clearTimeout(verifyTimeout);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
@@ -333,7 +349,6 @@ export function DeckPage() {
                 if (e.key === "Enter" && !verifying) submitPairingCode();
               }}
               placeholder="输入配对码"
-              disabled={verifying}
               autoFocus
             />
             <button
@@ -379,7 +394,14 @@ export function DeckPage() {
             onClick={requestWakeLock}
             title={wakeLocked ? "屏幕常亮已开启" : "开启屏幕常亮"}
           >
-            <Sun size={15} />
+            <Lightbulb size={15} />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "切换到明亮模式" : "切换到暗黑模式"}
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
         </div>
       </div>

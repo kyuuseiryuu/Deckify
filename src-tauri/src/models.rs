@@ -12,6 +12,13 @@ pub struct ServerInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WebhookHeader {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MacroStep {
     pub action: Box<SlotAction>,
     #[serde(default, rename = "delayMs")]
@@ -56,6 +63,8 @@ pub enum SlotAction {
         url: String,
         #[serde(default = "default_method")]
         method: String,
+        #[serde(default)]
+        headers: Vec<WebhookHeader>,
         #[serde(default)]
         body: String,
     },
