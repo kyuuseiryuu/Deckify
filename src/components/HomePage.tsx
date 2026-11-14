@@ -13,6 +13,8 @@ import {
   ShieldAlert,
   KeyRound,
   Network,
+  Download,
+  Upload,
 } from "lucide-react";
 import {
   checkAccessibilityPermission,
@@ -21,6 +23,7 @@ import {
 } from "../api";
 import type { LayoutConfig, ServerInfo } from "../types";
 import type { ThemeMode } from "../utils/theme";
+import { ConfigTransferModal } from "./ConfigTransferModal";
 
 interface HomePageProps {
   serverInfo: ServerInfo | null;
@@ -32,6 +35,8 @@ interface HomePageProps {
   onSelectLayout: (layout: LayoutConfig) => void;
   onDuplicateLayout: (layout: LayoutConfig) => void;
   onDeleteLayout: (layoutId: string) => void;
+  onImportLayouts: (layouts: LayoutConfig[]) => Promise<void>;
+  generateId: () => string;
   onUpdatePairingCode: (code: string) => Promise<void>;
   onUpdateLanIp: (ip: string) => Promise<void>;
 }
@@ -55,6 +60,8 @@ export function HomePage({
   onSelectLayout,
   onDuplicateLayout,
   onDeleteLayout,
+  onImportLayouts,
+  generateId,
   onUpdatePairingCode,
   onUpdateLanIp,
 }: HomePageProps) {
@@ -62,6 +69,11 @@ export function HomePage({
   const [codeInput, setCodeInput] = useState("");
   const [codeSaved, setCodeSaved] = useState(false);
   const [accessibilityOk, setAccessibilityOk] = useState(true);
+  const [transferModal, setTransferModal] = useState<
+    | null
+    | { mode: "import" }
+    | { mode: "export"; layouts: LayoutConfig[] }
+  >(null);
 
   useEffect(() => {
     if (serverInfo?.pairingCode) {
@@ -252,10 +264,32 @@ export function HomePage({
           <section className="card">
             <div className="card-header-row">
               <h2 className="card-title">布局配置 ({layouts.length})</h2>
-              <button className="btn btn-primary btn-sm" onClick={onCreateLayout}>
-                <Plus size={14} />
-                <span>创建配置</span>
-              </button>
+              <div className="layout-header-actions">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setTransferModal({ mode: "import" })}
+                  title="从文本、JSON 文件或 URL 导入配置"
+                >
+                  <Upload size={14} />
+                  <span>导入</span>
+                </button>
+                {layouts.length > 0 && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      setTransferModal({ mode: "export", layouts })
+                    }
+                    title="导出全部布局配置"
+                  >
+                    <Download size={14} />
+                    <span>导出全部</span>
+                  </button>
+                )}
+                <button className="btn btn-primary btn-sm" onClick={onCreateLayout}>
+                  <Plus size={14} />
+                  <span>创建配置</span>
+                </button>
+              </div>
             </div>
 
             {layouts.length === 0 ? (
@@ -306,6 +340,18 @@ export function HomePage({
                         </button>
                         <button
                           className="btn btn-secondary btn-sm"
+                          onClick={() =>
+                            setTransferModal({
+                              mode: "export",
+                              layouts: [layout],
+                            })
+                          }
+                          title="导出配置"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
                           onClick={() => onDuplicateLayout(layout)}
                           title="复制配置"
                         >
@@ -327,6 +373,18 @@ export function HomePage({
           </section>
         </div>
       </div>
+
+      {transferModal && (
+        <ConfigTransferModal
+          mode={transferModal.mode}
+          layoutsToExport={
+            transferModal.mode === "export" ? transferModal.layouts : []
+          }
+          generateId={generateId}
+          onImportLayouts={onImportLayouts}
+          onClose={() => setTransferModal(null)}
+        />
+      )}
     </div>
   );
 }

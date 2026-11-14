@@ -218,6 +218,41 @@ fn open_external_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn fetch_url_text(url: String) -> Result<String, String> {
+    let clean = url.trim().to_string();
+    if !(clean.starts_with("http://") || clean.starts_with("https://")) {
+        return Err("请输入以 http:// 或 https:// 开头的有效 URL".into());
+    }
+
+    tokio::task::spawn_blocking(move || {
+        let out = std::process::Command::new("curl")
+            .arg("-sSL")
+            .arg("-f")
+            .arg("--max-time")
+            .arg("15")
+            .arg("--max-filesize")
+            .arg("5242880")
+            .arg(&clean)
+            .output()
+            .map_err(|e| format!("请求失败: {}", e))?;
+
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let msg = stderr.trim();
+            return Err(if msg.is_empty() {
+                "无法获取该 URL 内容，请检查链接是否可访问".into()
+            } else {
+                format!("获取失败: {}", msg)
+            });
+        }
+
+        String::from_utf8(out.stdout).map_err(|_| "返回内容不是有效的 UTF-8 文本".into())
+    })
+    .await
+    .map_err(|e| format!("任务执行失败: {}", e))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -356,6 +391,7 @@ pub fn run() {
             check_accessibility_permission,
             open_accessibility_settings,
             open_external_url,
+            fetch_url_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Deckify");

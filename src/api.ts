@@ -63,6 +63,10 @@ export async function openExternalUrl(url: string): Promise<void> {
   return invoke<void>("open_external_url", { url });
 }
 
+export async function fetchUrlText(url: string): Promise<string> {
+  return invoke<string>("fetch_url_text", { url });
+}
+
 export function resolveIconUrl(
   iconPath: string | null | undefined,
   serverPort?: number

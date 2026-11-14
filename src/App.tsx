@@ -109,6 +109,15 @@ function DesktopApp() {
     setLayouts((prev) => [saved, ...prev]);
   };
 
+  const handleImportLayouts = async (imported: LayoutConfig[]) => {
+    const savedList: LayoutConfig[] = [];
+    for (const layout of imported) {
+      const saved = await saveLayout(layout);
+      savedList.push(saved);
+    }
+    setLayouts((prev) => [...savedList.reverse(), ...prev]);
+  };
+
   const handleUpdatePairingCode = async (code: string) => {
     const updated = await setPairingCode(code);
     setServerInfo(updated);
@@ -144,6 +153,8 @@ function DesktopApp() {
       onSelectLayout={(l) => setEditingLayoutId(l.id)}
       onDuplicateLayout={handleDuplicateLayout}
       onDeleteLayout={handleDeleteLayout}
+      onImportLayouts={handleImportLayouts}
+      generateId={createLayoutId}
       onUpdatePairingCode={handleUpdatePairingCode}
       onUpdateLanIp={handleUpdateLanIp}
     />
