@@ -2,7 +2,7 @@ import type { DeckSlot, LayoutConfig } from "../types";
 
 export interface ExportBundle {
   version: number;
-  app: "deckify";
+  app: "landeck";
   exportedAt: string;
   layouts: LayoutConfig[];
 }
@@ -13,7 +13,7 @@ export function serializeLayoutsForExport(layouts: LayoutConfig[]): string {
   }
   const bundle: ExportBundle = {
     version: 1,
-    app: "deckify",
+    app: "landeck",
     exportedAt: new Date().toISOString(),
     layouts,
   };
@@ -37,7 +37,7 @@ export function sanitizeFilename(name: string): string {
     .trim()
     .replace(/[\\/:*?"<>|]/g, "_")
     .replace(/\s+/g, "-");
-  return cleaned || "deckify-config";
+  return cleaned || "landeck-config";
 }
 
 function isRecord(val: unknown): val is Record<string, unknown> {

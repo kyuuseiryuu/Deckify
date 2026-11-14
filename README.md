@@ -1,4 +1,4 @@
-# Deckify
+# LanDeck
 
 [![GitHub Pages](https://img.shields.io/badge/Website-GitHub%20Pages-indigo?style=flat&logo=github)](https://kyuuseiryuu.github.io/Deckify/)
 [![GitHub Release](https://img.shields.io/github/v/release/kyuuseiryuu/Deckify?color=blue)](https://github.com/kyuuseiryuu/Deckify/releases)
@@ -7,7 +7,7 @@
 
 > 🌐 **官方产品主页与在线交互演示**：[https://kyuuseiryuu.github.io/Deckify/](https://kyuuseiryuu.github.io/Deckify/)
 
-**Deckify** 是一款基于 **Tauri 2 + Rust + React** 构建的桌面端智能控制面板应用，可以将同一局域网内的手机、平板等移动设备变为可自由定制的触控快捷控制台（类似 Stream Deck）。
+**LanDeck** 是一款基于 **Tauri 2 + Rust + React** 构建的桌面端智能控制面板应用，可以将同一局域网内的手机、平板等移动设备变为可自由定制的触控快捷控制台（类似 Stream Deck）。
 
 桌面端内置轻量级 HTTP 与 WebSocket 服务并内嵌移动端页面，移动端无需安装额外客户端，打开浏览器扫码（支持 PWA 添加到主屏幕）并输入配对码即可实时同步面板布局并远程触发桌面操作。
 
@@ -68,7 +68,7 @@
 ## 目录结构
 
 ```text
-Deckify/
+LanDeck/
 ├── src/                        # React + TypeScript 前端（桌面端管理界面 & 移动端 /deck 控制界面）
 │   ├── components/             # HomePage、EditorPage、DeckPage、MonitorTile 等组件
 │   ├── utils/                  # 网格计算、图片路径、主题工具
@@ -129,9 +129,9 @@ npm run build-app
 
 ## 使用说明
 
-1. 启动 Deckify 桌面端后，确保手机/平板与电脑处于**同一局域网**。
+1. 启动 LanDeck 桌面端后，确保手机/平板与电脑处于**同一局域网**。
 2. 使用移动设备扫描桌面端首页显示的二维码（或手动访问提示的局域网地址 `/deck`），输入配对码完成连接。
 3. 在桌面端新建或编辑控制面板布局，配置按键动作并保存，移动端会自动同步最新布局。
 4. **系统权限说明**：
    - **Windows**：开箱即用，无需额外配置辅助功能权限。
-   - **macOS**：若使用「快捷键」或「文本输入」等模拟键盘操作，请在系统弹窗或「系统设置 → 隐私与安全性 → 辅助功能」中为 Deckify 授予辅助功能权限。
+   - **macOS**：若使用「快捷键」或「文本输入」等模拟键盘操作，请在系统弹窗或「系统设置 → 隐私与安全性 → 辅助功能」中为 LanDeck 授予辅助功能权限。

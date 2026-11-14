@@ -749,26 +749,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deckify"
-version = "1.2.0"
-dependencies = [
- "axum",
- "enigo",
- "futures-util",
- "local-ip-address",
- "mime_guess",
- "plist",
- "rust-embed",
- "serde",
- "serde_json",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "deranged"
 version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2023,6 +2003,26 @@ checksum = "0fbe853b403ae61a04233030ae8a79d94975281ed9770a1f9e246732b534b28d"
 dependencies = [
  "bitflags 2.13.2",
  "serde",
+]
+
+[[package]]
+name = "landeck"
+version = "1.2.1"
+dependencies = [
+ "axum",
+ "enigo",
+ "futures-util",
+ "local-ip-address",
+ "mime_guess",
+ "plist",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

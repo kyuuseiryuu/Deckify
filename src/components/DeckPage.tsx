@@ -331,7 +331,7 @@ export function DeckPage() {
     return (
       <div className="deck-page">
         <div className="deck-token-prompt">
-          <h2>输入配对码连接 Deckify</h2>
+          <h2>输入配对码连接 LanDeck</h2>
           <p>初次连接请输入桌面端主页显示的配对码：</p>
           {authError && <p className="pairing-error-text">{authError}</p>}
           <div className="deck-token-row">

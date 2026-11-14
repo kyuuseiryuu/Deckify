@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Deckify Product Landing Page Styles
+   LanDeck Product Landing Page Styles
    Design System: Cyber-Studio Dark, Glassmorphism, Neon Glow Accents
    ========================================================================== */
 
@@ -1114,7 +1114,7 @@ a {
   color: var(--text-white) !important;
 }
 
-.compare-deckify-col {
+.compare-landeck-col {
   width: 33%;
   background: rgba(99, 102, 241, 0.05);
   color: #c7d2fe !important;

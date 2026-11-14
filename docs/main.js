@@ -1,5 +1,5 @@
 /**
- * Deckify Product Landing Page
+ * LanDeck Product Landing Page
  * Interactive Logic: Live Deck Simulator, Screenshot Tabs, Lightbox, FAQ, Web Audio Feedback
  */
 

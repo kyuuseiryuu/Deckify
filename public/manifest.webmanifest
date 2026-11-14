@@ -1,6 +1,6 @@
 {
-  "name": "Deckify",
-  "short_name": "Deckify",
+  "name": "LanDeck",
+  "short_name": "LanDeck",
   "start_url": "/deck",
   "display": "standalone",
   "background_color": "#0b0f19",

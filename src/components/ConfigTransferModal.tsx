@@ -55,7 +55,7 @@ export function ConfigTransferModal({
     if (layoutsToExport.length === 1) {
       return `${sanitizeFilename(layoutsToExport[0].name)}.json`;
     }
-    return "deckify-layouts-backup.json";
+    return "landeck-layouts-backup.json";
   }, [layoutsToExport]);
 
   const fileSummary = useMemo(() => {

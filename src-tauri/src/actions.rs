@@ -129,7 +129,7 @@ where
     app.run_on_main_thread(move || {
         if !is_accessibility_trusted(true) {
             let _ = tx.send(Err(
-                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 Deckify（重新打包后需先移除旧项再重新添加）".into(),
+                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 LanDeck（重新打包后需先移除旧项再重新添加）".into(),
             ));
             return;
         }
@@ -381,7 +381,7 @@ fn trigger_macos_hotkey(
     app.run_on_main_thread(move || {
         if !is_accessibility_trusted(true) {
             let _ = tx.send(Err(
-                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 Deckify（重新打包后需先移除旧项再重新添加）".into(),
+                "缺少 macOS 辅助功能权限：请在「系统设置 → 隐私与安全性 → 辅助功能」中开启 LanDeck（重新打包后需先移除旧项再重新添加）".into(),
             ));
             return;
         }

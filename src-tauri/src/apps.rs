@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_scan_local_apps() {
-        let temp_dir = std::env::temp_dir().join("deckify_test_icons_no_arrow");
+        let temp_dir = std::env::temp_dir().join("landeck_test_icons_no_arrow");
         let _ = fs::create_dir_all(&temp_dir);
         let apps = scan_local_apps(&temp_dir);
         println!("Found {} apps on Windows", apps.len());

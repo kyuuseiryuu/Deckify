@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-          # Ad-hoc sign the entire .app bundle so Info.plist is bound to com.deckify.desktop
+          # Ad-hoc sign the entire .app bundle so Info.plist is bound to la.ksr.landeck
           # (required for macOS TCC Accessibility permission matching).
           codesign --force --deep --sign - "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
@@ -93,7 +93,7 @@ jobs:
         if: "!startsWith(github.ref, 'refs/tags/v') && inputs.tag == ''"
         uses: actions/upload-artifact@v4
         with:
-          name: Deckify-macOS-Universal
+          name: LanDeck-macOS-Universal
           path: release-artifacts/*
 
   build-windows:
@@ -133,8 +133,8 @@ jobs:
 
           if [ -d "$BUNDLE_DIR/nsis" ]; then
             cp "$BUNDLE_DIR/nsis"/*.exe "$OUT_DIR/"
-          elif [ -f "src-tauri/target/release/deckify.exe" ]; then
-            cp "src-tauri/target/release/deckify.exe" "$OUT_DIR/"
+          elif [ -f "src-tauri/target/release/landeck.exe" ]; then
+            cp "src-tauri/target/release/landeck.exe" "$OUT_DIR/"
           fi
 
           ls -lh "$OUT_DIR"
@@ -152,5 +152,5 @@ jobs:
         if: "!startsWith(github.ref, 'refs/tags/v') && inputs.tag == ''"
         uses: actions/upload-artifact@v4
         with:
-          name: Deckify-Windows-x64
+          name: LanDeck-Windows-x64
           path: release-artifacts/*
