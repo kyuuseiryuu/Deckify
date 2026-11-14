@@ -273,9 +273,14 @@ export function HomePage({
                 <div className="pairing-box-row">
                   <input
                     className="pairing-input"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={codeInput}
-                    onChange={(e) => setCodeInput(e.target.value)}
-                    placeholder="输入配对码（如 4829）"
+                    onChange={(e) =>
+                      setCodeInput(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="输入数字配对码（如 4829）"
                     maxLength={16}
                   />
                   <button

@@ -23,6 +23,7 @@ import { withRefreshTick } from "../utils/imageUrl";
 import { useTheme } from "../utils/theme";
 import { KeepAwakeControl } from "./KeepAwakeControl";
 import { MonitorTile } from "./MonitorTile";
+import { PairingPage } from "./PairingPage";
 
 const SELECTED_LAYOUT_KEY = "smartdeck_selected_layout_id";
 const PAIRING_CODE_KEY = "smartdeck_pairing_code";
@@ -45,7 +46,6 @@ export function DeckPage() {
   const [flashMap, setFlashMap] = useState<Record<string, "ok" | "err">>({});
   const [pressingMap, setPressingMap] = useState<Record<string, boolean>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [codeInput, setCodeInput] = useState("");
 
   const wsRef = useRef<WebSocket | null>(null);
   const activeLayoutIdRef = useRef<string | null>(null);
@@ -309,7 +309,10 @@ export function DeckPage() {
 
     const preventTouchDrag = (e: TouchEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && target.closest(".deck-picker, .deck-topbar, .modal-card")) {
+      if (
+        target &&
+        target.closest(".deck-picker, .deck-topbar, .modal-card, .deck-token-prompt")
+      ) {
         return;
       }
       e.preventDefault();
@@ -333,42 +336,20 @@ export function DeckPage() {
 
   const showingPicker = showPicker || !activeLayout;
 
-  const submitPairingCode = () => {
-    const c = codeInput.trim();
-    if (!c) return;
+  const handlePairSubmit = (code: string) => {
     setAuthError(null);
     setPaired(false);
     setVerifying(true);
-    setPairingCode(c);
+    setPairingCode(code);
   };
 
   if (!pairingCode || !paired) {
     return (
-      <div className="deck-page">
-        <div className="deck-token-prompt">
-          <h2>输入配对码连接 LanDeck</h2>
-          <p>初次连接请输入桌面端主页显示的配对码：</p>
-          {authError && <p className="pairing-error-text">{authError}</p>}
-          <div className="deck-token-row">
-            <input
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !verifying) submitPairingCode();
-              }}
-              placeholder="输入配对码"
-              autoFocus
-            />
-            <button
-              className="btn btn-primary"
-              onClick={submitPairingCode}
-              disabled={verifying || !codeInput.trim()}
-            >
-              {verifying ? "验证中..." : "连接"}
-            </button>
-          </div>
-        </div>
-      </div>
+      <PairingPage
+        authError={authError}
+        verifying={verifying}
+        onSubmit={handlePairSubmit}
+      />
     );
   }
 

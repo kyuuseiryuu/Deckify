@@ -278,6 +278,9 @@ impl AppState {
         if trimmed.is_empty() {
             return Err("配对码不能为空".into());
         }
+        if !trimmed.chars().all(|c| c.is_ascii_digit()) {
+            return Err("配对码仅支持数字".into());
+        }
         {
             let mut guard = self.inner.write().await;
             guard.pairing_code = trimmed.clone();
