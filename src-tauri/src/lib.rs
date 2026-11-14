@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use sysinfo::{Networks, System};
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, State, WindowEvent,
 };
@@ -107,6 +107,14 @@ async fn set_pairing_code(
     code: String,
 ) -> Result<ServerInfo, String> {
     state.set_pairing_code(code).await
+}
+
+#[tauri::command]
+async fn set_hide_dock_icon(
+    state: State<'_, AppState>,
+    hide: bool,
+) -> Result<ServerInfo, String> {
+    state.set_hide_dock_icon(hide).await
 }
 
 #[tauri::command]
@@ -277,6 +285,17 @@ pub fn run() {
                 pairing_code,
                 pairing_configured,
             );
+
+            #[cfg(target_os = "macos")]
+            {
+                let hide = tauri::async_runtime::block_on(async {
+                    state.inner.read().await.hide_dock_icon
+                });
+                if hide {
+                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                }
+            }
+
             app.manage(state.clone());
 
             let server_state = state.clone();
@@ -330,6 +349,28 @@ pub fn run() {
 
             let show_i = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "退出 LanDeck", true, None::<&str>)?;
+
+            #[cfg(target_os = "macos")]
+            let menu = {
+                let initial_hide = tauri::async_runtime::block_on(async {
+                    app.state::<AppState>().inner.read().await.hide_dock_icon
+                });
+                let dock_i = CheckMenuItem::with_id(
+                    app,
+                    "toggle_dock",
+                    "隐藏 Dock 图标",
+                    true,
+                    initial_hide,
+                    None::<&str>,
+                )?;
+                tauri::async_runtime::block_on(async {
+                    app.state::<AppState>().inner.write().await.dock_menu_item =
+                        Some(dock_i.clone());
+                });
+                Menu::with_items(app, &[&show_i, &dock_i, &quit_i])?
+            };
+
+            #[cfg(not(target_os = "macos"))]
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
             let mut tray_builder = TrayIconBuilder::new()
@@ -341,6 +382,15 @@ pub fn run() {
                             let _ = win.show();
                             let _ = win.set_focus();
                         }
+                    }
+                    #[cfg(target_os = "macos")]
+                    "toggle_dock" => {
+                        let app_handle = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let state = app_handle.state::<AppState>();
+                            let current = state.inner.read().await.hide_dock_icon;
+                            let _ = state.set_hide_dock_icon(!current).await;
+                        });
                     }
                     "quit" => {
                         app.exit(0);
@@ -381,6 +431,7 @@ pub fn run() {
             get_server_info,
             set_lan_ip,
             set_pairing_code,
+            set_hide_dock_icon,
             get_online_count,
             list_layouts,
             save_layout,

@@ -19,6 +19,8 @@ pub struct ServerInfo {
     pub mobile_url: String,
     #[serde(default = "default_platform")]
     pub platform: String,
+    #[serde(default)]
+    pub hide_dock_icon: bool,
 }
 
 fn default_platform() -> String {

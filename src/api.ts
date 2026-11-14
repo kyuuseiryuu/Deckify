@@ -18,6 +18,10 @@ export async function setPairingCode(code: string): Promise<ServerInfo> {
   return invoke<ServerInfo>("set_pairing_code", { code });
 }
 
+export async function setHideDockIcon(hide: boolean): Promise<ServerInfo> {
+  return invoke<ServerInfo>("set_hide_dock_icon", { hide });
+}
+
 export async function getOnlineCount(): Promise<number> {
   return invoke<number>("get_online_count");
 }

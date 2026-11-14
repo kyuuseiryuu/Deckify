@@ -11,6 +11,7 @@ export interface ServerInfo {
   pairingConfigured: boolean;
   mobileUrl: string;
   platform?: string;
+  hideDockIcon?: boolean;
 }
 
 export interface WebhookHeader {

@@ -12,6 +12,7 @@ import {
   FolderOutput,
   LayoutGrid,
   Volume2,
+  VolumeX,
   Webhook,
   Layers,
   Type,
@@ -24,9 +25,13 @@ import { MonitorTile } from "./MonitorTile";
 
 const SELECTED_LAYOUT_KEY = "smartdeck_selected_layout_id";
 const PAIRING_CODE_KEY = "smartdeck_pairing_code";
+const SOUND_ENABLED_KEY = "landeck_sound_enabled";
 
 export function DeckPage() {
   const [theme, toggleTheme] = useTheme();
+  const [soundEnabled, setSoundEnabled] = useState(
+    () => localStorage.getItem(SOUND_ENABLED_KEY) !== "false"
+  );
   const [connected, setConnected] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -37,12 +42,15 @@ export function DeckPage() {
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
   const [isCharging, setIsCharging] = useState(false);
   const [flashMap, setFlashMap] = useState<Record<string, "ok" | "err">>({});
+  const [pressingMap, setPressingMap] = useState<Record<string, boolean>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [codeInput, setCodeInput] = useState("");
 
   const wsRef = useRef<WebSocket | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const activeLayoutIdRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const pressTimersRef = useRef<Record<string, number>>({});
   activeLayoutIdRef.current = activeLayout?.id ?? null;
 
   const [pairingCode, setPairingCode] = useState<string>(() => {
@@ -270,11 +278,75 @@ export function DeckPage() {
     }
   };
 
+  const playKeyClickSound = () => {
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.05);
+
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.05);
+    } catch {
+      // Ignore Web Audio failures when blocked by browser autoplay policy
+    }
+  };
+
+  const toggleSound = () => {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem(SOUND_ENABLED_KEY, String(next));
+      return next;
+    });
+  };
+
   const handleTrigger = (slot: DeckSlot) => {
     if (!activeLayout) return;
-    if ("vibrate" in navigator) {
-      navigator.vibrate(15);
+
+    setPressingMap((prev) => ({ ...prev, [slot.id]: true }));
+    if (pressTimersRef.current[slot.id]) {
+      window.clearTimeout(pressTimersRef.current[slot.id]);
     }
+    pressTimersRef.current[slot.id] = window.setTimeout(() => {
+      setPressingMap((prev) => {
+        const next = { ...prev };
+        delete next[slot.id];
+        return next;
+      });
+    }, 160);
+
+    try {
+      if ("vibrate" in navigator) {
+        navigator.vibrate(15);
+      }
+    } catch {
+      // Ignore vibration errors on unsupported browsers
+    }
+
+    if (soundEnabled) {
+      playKeyClickSound();
+    }
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
@@ -383,6 +455,13 @@ export function DeckPage() {
             <LayoutGrid size={15} />
           </button>
           <button
+            className={`icon-btn ${soundEnabled ? "active" : ""}`}
+            onClick={toggleSound}
+            title={soundEnabled ? "关闭点击音效" : "开启点击音效"}
+          >
+            {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+          </button>
+          <button
             className="icon-btn"
             onClick={toggleTheme}
             title={theme === "dark" ? "切换到明亮模式" : "切换到暗黑模式"}
@@ -472,7 +551,9 @@ export function DeckPage() {
                 key={slot.id}
                 className={`deck-slot filled ${isImageTile ? "is-image" : ""} ${
                   isMonitorTile ? "is-monitor" : ""
-                } ${flash ? `flash-${flash}` : ""}`}
+                } ${pressingMap[slot.id] ? "pressing" : ""} ${
+                  flash ? `flash-${flash}` : ""
+                }`}
                 style={{
                   backgroundColor: slot.color || "#1e293b",
                   gridColumn: `${col + 1} / span ${colSpan}`,

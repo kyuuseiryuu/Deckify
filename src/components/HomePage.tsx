@@ -15,6 +15,8 @@ import {
   Network,
   Download,
   Upload,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   checkAccessibilityPermission,
@@ -39,6 +41,7 @@ interface HomePageProps {
   generateId: () => string;
   onUpdatePairingCode: (code: string) => Promise<void>;
   onUpdateLanIp: (ip: string) => Promise<void>;
+  onToggleHideDockIcon: (hide: boolean) => Promise<void>;
 }
 
 function formatLastSeen(ts: number): string {
@@ -64,6 +67,7 @@ export function HomePage({
   generateId,
   onUpdatePairingCode,
   onUpdateLanIp,
+  onToggleHideDockIcon,
 }: HomePageProps) {
   const [copied, setCopied] = useState(false);
   const [codeInput, setCodeInput] = useState("");
@@ -118,6 +122,20 @@ export function HomePage({
           </p>
         </div>
         <div className="home-header-actions">
+          {serverInfo?.platform === "macos" && (
+            <button
+              className={`btn btn-sm ${
+                serverInfo.hideDockIcon ? "btn-primary" : "btn-secondary"
+              }`}
+              onClick={() => onToggleHideDockIcon(!serverInfo.hideDockIcon)}
+              title="开启后将隐藏 macOS Dock 栏图标，仅保留顶部菜单栏托盘图标"
+            >
+              {serverInfo.hideDockIcon ? <EyeOff size={14} /> : <Eye size={14} />}
+              <span>
+                {serverInfo.hideDockIcon ? "已隐藏 Dock 图标" : "隐藏 Dock 图标"}
+              </span>
+            </button>
+          )}
           <button
             className="btn btn-secondary btn-sm"
             onClick={onToggleTheme}

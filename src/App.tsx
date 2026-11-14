@@ -6,6 +6,7 @@ import {
   getServerInfo,
   listLayouts,
   saveLayout,
+  setHideDockIcon,
   setLanIp,
   setPairingCode,
 } from "./api";
@@ -56,10 +57,17 @@ function DesktopApp() {
     const unlistenLayouts = listen("layouts-updated", () => {
       refreshLayouts();
     });
+    const unlistenServerInfo = listen<ServerInfo>(
+      "server-info-updated",
+      (event) => {
+        setServerInfo(event.payload);
+      }
+    );
 
     return () => {
       unlistenClients.then((fn) => fn());
       unlistenLayouts.then((fn) => fn());
+      unlistenServerInfo.then((fn) => fn());
     };
   }, []);
 
@@ -128,6 +136,11 @@ function DesktopApp() {
     setServerInfo(updated);
   };
 
+  const handleToggleHideDockIcon = async (hide: boolean) => {
+    const updated = await setHideDockIcon(hide);
+    setServerInfo(updated);
+  };
+
   if (editingLayout) {
     return (
       <EditorPage
@@ -157,6 +170,7 @@ function DesktopApp() {
       generateId={createLayoutId}
       onUpdatePairingCode={handleUpdatePairingCode}
       onUpdateLanIp={handleUpdateLanIp}
+      onToggleHideDockIcon={handleToggleHideDockIcon}
     />
   );
 }

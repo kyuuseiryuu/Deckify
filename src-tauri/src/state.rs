@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use tauri::Emitter;
 use tokio::sync::{mpsc, RwLock};
 
 use crate::models::{LayoutConfig, ServerInfo, SystemStats, WsServerMsg};
@@ -25,6 +26,9 @@ pub struct StateInner {
     pub port: u16,
     pub pairing_code: String,
     pub pairing_configured: bool,
+    pub hide_dock_icon: bool,
+    #[cfg(target_os = "macos")]
+    pub dock_menu_item: Option<tauri::menu::CheckMenuItem<tauri::Wry>>,
 }
 
 pub fn now_unix_secs() -> u64 {
@@ -48,6 +52,7 @@ impl AppState {
         let _ = fs::create_dir_all(&icon_cache_dir);
 
         let layouts = Self::load_layouts_from_disk(&data_dir);
+        let hide_dock_icon = Self::load_hide_dock_icon(&data_dir);
 
         Self {
             inner: Arc::new(RwLock::new(StateInner {
@@ -59,6 +64,9 @@ impl AppState {
                 port,
                 pairing_code,
                 pairing_configured,
+                hide_dock_icon,
+                #[cfg(target_os = "macos")]
+                dock_menu_item: None,
             })),
             app_handle,
         }
@@ -70,6 +78,16 @@ impl AppState {
 
     fn pairing_code_file(data_dir: &PathBuf) -> PathBuf {
         data_dir.join("pairing_code.txt")
+    }
+
+    fn hide_dock_icon_file(data_dir: &PathBuf) -> PathBuf {
+        data_dir.join("hide_dock_icon.txt")
+    }
+
+    fn load_hide_dock_icon(data_dir: &PathBuf) -> bool {
+        fs::read_to_string(Self::hide_dock_icon_file(data_dir))
+            .map(|s| s.trim() == "true")
+            .unwrap_or(false)
     }
 
     fn load_layouts_from_disk(data_dir: &PathBuf) -> HashMap<String, LayoutConfig> {
@@ -104,7 +122,50 @@ impl AppState {
             pairing_configured: guard.pairing_configured,
             mobile_url: format!("http://{}:{}/deck", guard.lan_ip, guard.port),
             platform: std::env::consts::OS.to_string(),
+            hide_dock_icon: guard.hide_dock_icon,
         }
+    }
+
+    pub async fn set_hide_dock_icon(&self, hide: bool) -> Result<ServerInfo, String> {
+        #[cfg(target_os = "macos")]
+        let dock_item = {
+            let mut guard = self.inner.write().await;
+            guard.hide_dock_icon = hide;
+            let _ = fs::write(
+                Self::hide_dock_icon_file(&guard.data_dir),
+                if hide { "true" } else { "false" },
+            );
+            guard.dock_menu_item.clone()
+        };
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let mut guard = self.inner.write().await;
+            guard.hide_dock_icon = hide;
+            let _ = fs::write(
+                Self::hide_dock_icon_file(&guard.data_dir),
+                if hide { "true" } else { "false" },
+            );
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(item) = dock_item {
+                let _ = item.set_checked(hide);
+            }
+            let policy = if hide {
+                tauri::ActivationPolicy::Accessory
+            } else {
+                tauri::ActivationPolicy::Regular
+            };
+            self.app_handle
+                .set_activation_policy(policy)
+                .map_err(|e| format!("Failed to update Dock icon visibility: {}", e))?;
+        }
+
+        let info = self.server_info().await;
+        let _ = self.app_handle.emit("server-info-updated", &info);
+        Ok(info)
     }
 
     pub async fn set_lan_ip(&self, ip: String) -> Result<ServerInfo, String> {
