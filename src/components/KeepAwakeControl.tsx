@@ -215,26 +215,28 @@ export function KeepAwakeControl({
     }
 
     if (isHttpsMode) {
-      if (!isCharging) {
-        onToast?.(
-          batterySupported
-            ? "当前未在充电中，仅支持充电时开启屏幕常亮"
-            : "当前浏览器无法确认充电状态，暂不支持开启屏幕常亮"
-        );
+      if (batterySupported && !isCharging) {
+        onToast?.("当前未在充电中，仅支持充电时开启屏幕常亮");
         return;
       }
       userToggledOffRef.current = false;
       await requestWakeLock();
       setKeepAwake(true);
-      onToast?.("已开启原生屏幕常亮（WakeLock）");
+      onToast?.(
+        batterySupported
+          ? "已开启原生屏幕常亮（WakeLock）"
+          : "已开启原生屏幕常亮（请确保设备已连接电源）"
+      );
       return;
     }
 
     setShowModal(true);
   };
 
+  const canEnableInModal = !batterySupported || isCharging;
+
   const handleConfirmEnable = async () => {
-    if (!isCharging) return;
+    if (!canEnableInModal) return;
     setShowModal(false);
     await requestWakeLock();
     const ok = await startMediaKeepAwake();
@@ -261,11 +263,13 @@ export function KeepAwakeControl({
       {showModal && (
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            {isCharging ? (
+            {canEnableInModal ? (
               <>
                 <h3 className="modal-title">开启屏幕常亮提醒</h3>
                 <p className="modal-desc">
-                  该功能将通过循环播放隐藏视频与极微弱静音音频来阻止屏幕熄灭，可能会增加耗电与轻微发热，并可能影响手机后台正在播放的其他媒体。断开充电后将自动关闭。
+                  {batterySupported
+                    ? "该功能将通过循环播放隐藏视频与极微弱静音音频来阻止屏幕熄灭，可能会增加耗电与轻微发热，并可能影响手机后台正在播放的其他媒体。断开充电后将自动关闭。"
+                    : "当前浏览器无法读取电池状态（如 iOS Safari / PWA），请确认设备已连接电源后再开启。该功能将通过循环播放隐藏视频与极微弱静音音频来阻止屏幕熄灭，可能会增加耗电与发热，并可能影响后台媒体播放。"}
                 </p>
                 <div className="modal-actions">
                   <button
@@ -288,9 +292,7 @@ export function KeepAwakeControl({
               <>
                 <h3 className="modal-title">仅支持充电时开启</h3>
                 <p className="modal-desc">
-                  {batterySupported
-                    ? "当前设备未在充电中。为防止过度耗电与设备发热，请先接通电源后再开启屏幕常亮。"
-                    : "当前浏览器不支持读取电池充电状态（如部分 iOS 浏览器），无法确认是否正在充电，因此暂不允许开启该功能。"}
+                  当前设备未在充电中。为防止过度耗电与设备发热，请先接通电源后再开启屏幕常亮。
                 </p>
                 <div className="modal-actions">
                   <button
