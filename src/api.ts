@@ -22,6 +22,10 @@ export async function setHideDockIcon(hide: boolean): Promise<ServerInfo> {
   return invoke<ServerInfo>("set_hide_dock_icon", { hide });
 }
 
+export async function setHttpsEnabled(enabled: boolean): Promise<ServerInfo> {
+  return invoke<ServerInfo>("set_https_enabled", { enabled });
+}
+
 export async function getOnlineCount(): Promise<number> {
   return invoke<number>("get_online_count");
 }

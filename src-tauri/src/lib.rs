@@ -1,5 +1,6 @@
 mod actions;
 mod apps;
+mod certs;
 mod models;
 mod server;
 mod state;
@@ -115,6 +116,14 @@ async fn set_hide_dock_icon(
     hide: bool,
 ) -> Result<ServerInfo, String> {
     state.set_hide_dock_icon(hide).await
+}
+
+#[tauri::command]
+async fn set_https_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<ServerInfo, String> {
+    state.set_https_enabled(enabled).await
 }
 
 #[tauri::command]
@@ -303,6 +312,14 @@ pub fn run() {
                 server::start_server(server_state, port).await;
             });
 
+            let https_state = state.clone();
+            tauri::async_runtime::spawn(async move {
+                let enabled = https_state.inner.read().await.https_enabled;
+                if enabled {
+                    let _ = https_state.set_https_enabled(true).await;
+                }
+            });
+
             let stats_state = state;
             tauri::async_runtime::spawn(async move {
                 let mut sys = System::new_all();
@@ -432,6 +449,7 @@ pub fn run() {
             set_lan_ip,
             set_pairing_code,
             set_hide_dock_icon,
+            set_https_enabled,
             get_online_count,
             list_layouts,
             save_layout,

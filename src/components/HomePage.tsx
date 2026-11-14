@@ -17,6 +17,8 @@ import {
   Upload,
   Eye,
   EyeOff,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import {
   checkAccessibilityPermission,
@@ -42,6 +44,7 @@ interface HomePageProps {
   onUpdatePairingCode: (code: string) => Promise<void>;
   onUpdateLanIp: (ip: string) => Promise<void>;
   onToggleHideDockIcon: (hide: boolean) => Promise<void>;
+  onToggleHttps: (enabled: boolean) => Promise<void>;
 }
 
 function formatLastSeen(ts: number): string {
@@ -68,11 +71,14 @@ export function HomePage({
   onUpdatePairingCode,
   onUpdateLanIp,
   onToggleHideDockIcon,
+  onToggleHttps,
 }: HomePageProps) {
   const [copied, setCopied] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [codeSaved, setCodeSaved] = useState(false);
   const [accessibilityOk, setAccessibilityOk] = useState(true);
+  const [httpsBusy, setHttpsBusy] = useState(false);
+  const [httpsError, setHttpsError] = useState<string | null>(null);
   const [transferModal, setTransferModal] = useState<
     | null
     | { mode: "import" }
@@ -148,7 +154,11 @@ export function HomePage({
             <div className="server-badge">
               <span className="dot-online" />
               <span>
-                服务运行中 · {serverInfo.lanIp}:{serverInfo.port} · 在线 {onlineCount}
+                服务运行中 · {serverInfo.lanIp}:
+                {serverInfo.httpsEnabled && serverInfo.httpsPort
+                  ? `${serverInfo.httpsPort} (HTTPS)`
+                  : serverInfo.port}{" "}
+                · 在线 {onlineCount}
               </span>
             </div>
           )}
@@ -236,9 +246,13 @@ export function HomePage({
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() =>
-                    openExternalUrl(`http://127.0.0.1:${serverInfo.port}/deck`)
-                  }
+                  onClick={() => {
+                    const previewUrl =
+                      serverInfo.httpsEnabled && serverInfo.httpsPort
+                        ? `https://127.0.0.1:${serverInfo.httpsPort}/deck`
+                        : `http://127.0.0.1:${serverInfo.port}/deck`;
+                    openExternalUrl(previewUrl);
+                  }}
                   title="在本机浏览器模拟移动端"
                 >
                   <ExternalLink size={15} />
@@ -273,6 +287,82 @@ export function HomePage({
                     <span>{codeSaved ? "已保存" : "保存配对码"}</span>
                   </button>
                 </div>
+              </div>
+
+              <div className="https-box">
+                <div className="https-box-header">
+                  <div className="https-box-title">
+                    {serverInfo.httpsEnabled ? (
+                      <ShieldCheck size={15} className="https-icon-on" />
+                    ) : (
+                      <Lock size={15} />
+                    )}
+                    <span>本地 HTTPS (SSL)</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${
+                      serverInfo.httpsEnabled ? "btn-secondary" : "btn-primary"
+                    }`}
+                    disabled={httpsBusy}
+                    onClick={async () => {
+                      setHttpsBusy(true);
+                      setHttpsError(null);
+                      try {
+                        await onToggleHttps(!serverInfo.httpsEnabled);
+                      } catch (e) {
+                        setHttpsError(
+                          e instanceof Error ? e.message : String(e)
+                        );
+                      } finally {
+                        setHttpsBusy(false);
+                      }
+                    }}
+                  >
+                    <span>
+                      {httpsBusy
+                        ? "处理中..."
+                        : serverInfo.httpsEnabled
+                          ? "关闭 HTTPS"
+                          : "一键生成 CA 并开启"}
+                    </span>
+                  </button>
+                </div>
+
+                {httpsError && (
+                  <p className="pairing-error-text">{httpsError}</p>
+                )}
+
+                {serverInfo.httpsEnabled && serverInfo.caCertUrl ? (
+                  <div className="https-ca-panel">
+                    <div className="https-ca-qr">
+                      <QRCodeSVG
+                        value={serverInfo.caCertUrl}
+                        size={84}
+                        bgColor="#ffffff"
+                        fgColor="#0f172a"
+                        level="M"
+                      />
+                    </div>
+                    <div className="https-ca-guide">
+                      <div className="https-ca-title">
+                        首次使用请扫码下载并信任根证书
+                      </div>
+                      <p>
+                        1. 手机扫码下载 <code>LanDeck-CA.crt</code>（
+                        <code>{serverInfo.caCertUrl}</code>）
+                      </p>
+                      <p>
+                        2. <strong>iOS</strong>：设置 → 已下载描述文件安装 → 通用 → 关于本机 → 证书信任设置开启信任；
+                        <strong>Android</strong>：设置 → 安全/凭据 → 安装 CA 证书。
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="https-hint">
+                    开启后将自动生成本地根证书并启用 HTTPS / WSS，可解锁浏览器原生 WakeLock 常亮与完整 PWA 体验。
+                  </p>
+                )}
               </div>
             </>
           )}

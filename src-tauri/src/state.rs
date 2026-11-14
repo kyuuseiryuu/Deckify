@@ -27,6 +27,9 @@ pub struct StateInner {
     pub pairing_code: String,
     pub pairing_configured: bool,
     pub hide_dock_icon: bool,
+    pub https_enabled: bool,
+    pub https_port: Option<u16>,
+    pub https_task: Option<tauri::async_runtime::JoinHandle<()>>,
     #[cfg(target_os = "macos")]
     pub dock_menu_item: Option<tauri::menu::CheckMenuItem<tauri::Wry>>,
 }
@@ -53,6 +56,7 @@ impl AppState {
 
         let layouts = Self::load_layouts_from_disk(&data_dir);
         let hide_dock_icon = Self::load_hide_dock_icon(&data_dir);
+        let https_enabled = Self::load_https_enabled(&data_dir);
 
         Self {
             inner: Arc::new(RwLock::new(StateInner {
@@ -65,6 +69,9 @@ impl AppState {
                 pairing_code,
                 pairing_configured,
                 hide_dock_icon,
+                https_enabled,
+                https_port: None,
+                https_task: None,
                 #[cfg(target_os = "macos")]
                 dock_menu_item: None,
             })),
@@ -84,8 +91,18 @@ impl AppState {
         data_dir.join("hide_dock_icon.txt")
     }
 
+    fn https_enabled_file(data_dir: &PathBuf) -> PathBuf {
+        data_dir.join("https_enabled.txt")
+    }
+
     fn load_hide_dock_icon(data_dir: &PathBuf) -> bool {
         fs::read_to_string(Self::hide_dock_icon_file(data_dir))
+            .map(|s| s.trim() == "true")
+            .unwrap_or(false)
+    }
+
+    fn load_https_enabled(data_dir: &PathBuf) -> bool {
+        fs::read_to_string(Self::https_enabled_file(data_dir))
             .map(|s| s.trim() == "true")
             .unwrap_or(false)
     }
@@ -114,16 +131,92 @@ impl AppState {
     pub async fn server_info(&self) -> ServerInfo {
         let guard = self.inner.read().await;
         let available_ips = crate::detect_available_ips();
+        let (mobile_url, ca_cert_url) = if guard.https_enabled {
+            if let Some(hp) = guard.https_port {
+                (
+                    format!("https://{}:{}/deck", guard.lan_ip, hp),
+                    Some(format!("http://{}:{}/ca.crt", guard.lan_ip, guard.port)),
+                )
+            } else {
+                (
+                    format!("http://{}:{}/deck", guard.lan_ip, guard.port),
+                    None,
+                )
+            }
+        } else {
+            (
+                format!("http://{}:{}/deck", guard.lan_ip, guard.port),
+                None,
+            )
+        };
+
         ServerInfo {
             lan_ip: guard.lan_ip.clone(),
             available_ips,
             port: guard.port,
             pairing_code: guard.pairing_code.clone(),
             pairing_configured: guard.pairing_configured,
-            mobile_url: format!("http://{}:{}/deck", guard.lan_ip, guard.port),
+            mobile_url,
             platform: std::env::consts::OS.to_string(),
             hide_dock_icon: guard.hide_dock_icon,
+            https_enabled: guard.https_enabled,
+            https_port: guard.https_port,
+            ca_cert_url,
         }
+    }
+
+    pub async fn set_https_enabled(&self, enabled: bool) -> Result<ServerInfo, String> {
+        let (data_dir, http_port, lan_ip, old_task) = {
+            let mut guard = self.inner.write().await;
+            let task = guard.https_task.take();
+            (
+                guard.data_dir.clone(),
+                guard.port,
+                guard.lan_ip.clone(),
+                task,
+            )
+        };
+
+        if let Some(handle) = old_task {
+            handle.abort();
+        }
+
+        if enabled {
+            let mut ips: Vec<String> = crate::detect_available_ips()
+                .into_iter()
+                .map(|i| i.ip)
+                .collect();
+            if !ips.contains(&lan_ip) {
+                ips.push(lan_ip);
+            }
+            let bundle = crate::certs::ensure_local_certs(&data_dir, &ips)?;
+            let https_port = crate::pick_port(http_port.saturating_add(1));
+            let server_state = self.clone();
+            let join_handle = tauri::async_runtime::spawn(async move {
+                crate::server::start_https_server(
+                    server_state,
+                    https_port,
+                    bundle.server_cert_pem,
+                    bundle.server_key_pem,
+                )
+                .await;
+            });
+
+            let mut guard = self.inner.write().await;
+            guard.https_enabled = true;
+            guard.https_port = Some(https_port);
+            guard.https_task = Some(join_handle);
+            let _ = fs::write(Self::https_enabled_file(&guard.data_dir), "true");
+        } else {
+            let mut guard = self.inner.write().await;
+            guard.https_enabled = false;
+            guard.https_port = None;
+            let _ = fs::write(Self::https_enabled_file(&guard.data_dir), "false");
+        }
+
+        let info = self.server_info().await;
+        let _ = self.app_handle.emit("server-info-updated", &info);
+        Ok(info)
     }
 
     pub async fn set_hide_dock_icon(&self, hide: bool) -> Result<ServerInfo, String> {

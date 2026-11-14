@@ -12,6 +12,9 @@ export interface ServerInfo {
   mobileUrl: string;
   platform?: string;
   hideDockIcon?: boolean;
+  httpsEnabled?: boolean;
+  httpsPort?: number | null;
+  caCertUrl?: string | null;
 }
 
 export interface WebhookHeader {

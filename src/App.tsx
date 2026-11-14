@@ -7,6 +7,7 @@ import {
   listLayouts,
   saveLayout,
   setHideDockIcon,
+  setHttpsEnabled,
   setLanIp,
   setPairingCode,
 } from "./api";
@@ -141,6 +142,11 @@ function DesktopApp() {
     setServerInfo(updated);
   };
 
+  const handleToggleHttps = async (enabled: boolean) => {
+    const updated = await setHttpsEnabled(enabled);
+    setServerInfo(updated);
+  };
+
   if (editingLayout) {
     return (
       <EditorPage
@@ -171,6 +177,7 @@ function DesktopApp() {
       onUpdatePairingCode={handleUpdatePairingCode}
       onUpdateLanIp={handleUpdateLanIp}
       onToggleHideDockIcon={handleToggleHideDockIcon}
+      onToggleHttps={handleToggleHttps}
     />
   );
 }

@@ -1763,3 +1763,78 @@ textarea {
   color: inherit;
   font-weight: 600;
 }
+
+.https-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.https-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.https-box-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.https-icon-on {
+  color: var(--emerald);
+}
+
+.https-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.https-ca-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.https-ca-qr {
+  flex-shrink: 0;
+  padding: 6px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.https-ca-guide {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.https-ca-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.https-ca-guide p {
+  margin: 0 0 4px;
+  word-break: break-all;
+}
+
+.https-ca-guide p:last-child {
+  margin-bottom: 0;
+}

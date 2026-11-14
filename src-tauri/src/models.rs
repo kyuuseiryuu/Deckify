@@ -21,6 +21,12 @@ pub struct ServerInfo {
     pub platform: String,
     #[serde(default)]
     pub hide_dock_icon: bool,
+    #[serde(default)]
+    pub https_enabled: bool,
+    #[serde(default)]
+    pub https_port: Option<u16>,
+    #[serde(default)]
+    pub ca_cert_url: Option<String>,
 }
 
 fn default_platform() -> String {

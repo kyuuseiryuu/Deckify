@@ -24,17 +24,65 @@ use crate::state::AppState;
 #[folder = "../dist"]
 struct FrontendAssets;
 
-pub async fn start_server(state: AppState, port: u16) {
-    let app = Router::new()
+fn build_router(state: AppState) -> Router {
+    Router::new()
         .route("/ws", get(ws_handler))
         .route("/manifest.webmanifest", get(serve_manifest))
+        .route("/ca.crt", get(serve_ca_cert))
         .route("/icons/:filename", get(serve_icon))
         .fallback(serve_frontend)
-        .with_state(state);
+        .with_state(state)
+}
+
+pub async fn start_server(state: AppState, port: u16) {
+    let app = build_router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     if let Ok(listener) = tokio::net::TcpListener::bind(addr).await {
         let _ = axum::serve(listener, app).await;
+    }
+}
+
+pub async fn start_https_server(
+    state: AppState,
+    port: u16,
+    cert_pem: String,
+    key_pem: String,
+) {
+    let Ok(config) =
+        axum_server::tls_rustls::RustlsConfig::from_pem(cert_pem.into_bytes(), key_pem.into_bytes())
+            .await
+    else {
+        return;
+    };
+
+    let app = build_router(state);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let _ = axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service())
+        .await;
+}
+
+async fn serve_ca_cert(State(state): State<AppState>) -> Response {
+    let ca_path = {
+        let guard = state.inner.read().await;
+        guard.data_dir.join("certs").join("ca.crt")
+    };
+
+    match tokio::fs::read(&ca_path).await {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, "application/x-x509-ca-cert"),
+                (
+                    header::CONTENT_DISPOSITION,
+                    "attachment; filename=\"LanDeck-CA.crt\"",
+                ),
+                (header::CACHE_CONTROL, "no-store"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
