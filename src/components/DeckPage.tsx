@@ -309,7 +309,7 @@ export function DeckPage() {
 
     const preventTouchDrag = (e: TouchEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && target.closest(".deck-picker")) {
+      if (target && target.closest(".deck-picker, .deck-topbar, .modal-card")) {
         return;
       }
       e.preventDefault();
