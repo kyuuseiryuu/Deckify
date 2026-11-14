@@ -11,8 +11,10 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use sysinfo::{Networks, System};
+#[cfg(target_os = "macos")]
+use tauri::menu::CheckMenuItem;
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuItem},
+    menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, State, WindowEvent,
 };
@@ -243,16 +245,20 @@ async fn fetch_url_text(url: String) -> Result<String, String> {
     }
 
     tokio::task::spawn_blocking(move || {
-        let out = std::process::Command::new("curl")
-            .arg("-sSL")
+        let mut cmd = std::process::Command::new("curl");
+        cmd.arg("-sSL")
             .arg("-f")
             .arg("--max-time")
             .arg("15")
             .arg("--max-filesize")
             .arg("5242880")
-            .arg(&clean)
-            .output()
-            .map_err(|e| format!("请求失败: {}", e))?;
+            .arg(&clean);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000);
+        }
+        let out = cmd.output().map_err(|e| format!("请求失败: {}", e))?;
 
         if !out.status.success() {
             let stderr = String::from_utf8_lossy(&out.stderr);
