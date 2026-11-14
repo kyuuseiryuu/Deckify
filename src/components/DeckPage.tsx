@@ -21,6 +21,7 @@ import type { DeckSlot, LayoutConfig, SystemStats, WsServerMsg } from "../types"
 import { computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
 import { useTheme } from "../utils/theme";
+import { KeepAwakeControl } from "./KeepAwakeControl";
 import { MonitorTile } from "./MonitorTile";
 
 const SELECTED_LAYOUT_KEY = "smartdeck_selected_layout_id";
@@ -47,85 +48,27 @@ export function DeckPage() {
   const [codeInput, setCodeInput] = useState("");
 
   const wsRef = useRef<WebSocket | null>(null);
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const activeLayoutIdRef = useRef<string | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const pressTimersRef = useRef<Record<string, number>>({});
+  const toastTimerRef = useRef<number | null>(null);
   activeLayoutIdRef.current = activeLayout?.id ?? null;
+
+  const showToast = (msg: string, durationMs = 2400) => {
+    setToastMsg(msg);
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMsg(null);
+    }, durationMs);
+  };
 
   const [pairingCode, setPairingCode] = useState<string>(() => {
     return localStorage.getItem(PAIRING_CODE_KEY) ?? "";
   });
   const [paired, setPaired] = useState(false);
   const [verifying, setVerifying] = useState(false);
-
-  const requestWakeLock = async () => {
-    try {
-      if ("wakeLock" in navigator) {
-        if (wakeLockRef.current && !wakeLockRef.current.released) {
-          return;
-        }
-        wakeLockRef.current = await navigator.wakeLock.request("screen");
-      }
-    } catch {
-      // Ignore wake lock failure (e.g. low battery)
-    }
-  };
-
-  useEffect(() => {
-    requestWakeLock();
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        requestWakeLock();
-      }
-    };
-    const onFirstGesture = () => {
-      requestWakeLock();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pointerdown", onFirstGesture, { passive: true });
-
-    let batteryCleanup: (() => void) | undefined;
-    const navWithBattery = navigator as Navigator & {
-      getBattery?: () => Promise<{
-        charging: boolean;
-        addEventListener: (ev: string, cb: () => void) => void;
-        removeEventListener: (ev: string, cb: () => void) => void;
-      }>;
-    };
-    if (navWithBattery.getBattery) {
-      navWithBattery
-        .getBattery()
-        .then((bat) => {
-          const updateCharging = () => {
-            setIsCharging(bat.charging);
-            if (bat.charging || document.visibilityState === "visible") {
-              requestWakeLock();
-            }
-          };
-          updateCharging();
-          bat.addEventListener("chargingchange", updateCharging);
-          batteryCleanup = () =>
-            bat.removeEventListener("chargingchange", updateCharging);
-        })
-        .catch(() => {});
-    }
-
-    const keepAliveTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        requestWakeLock();
-      }
-    }, 20000);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pointerdown", onFirstGesture);
-      clearInterval(keepAliveTimer);
-      batteryCleanup?.();
-      wakeLockRef.current?.release();
-    };
-  }, []);
 
   useEffect(() => {
     if (!pairingCode) return;
@@ -447,6 +390,10 @@ export function DeckPage() {
           {!connected && <span className="reconnecting">重连中...</span>}
         </div>
         <div className="deck-tools">
+          <KeepAwakeControl
+            onChargingChange={setIsCharging}
+            onToast={(msg) => showToast(msg)}
+          />
           <button
             className={`icon-btn ${showingPicker ? "active" : ""}`}
             onClick={() => setShowPicker((v) => !v)}
