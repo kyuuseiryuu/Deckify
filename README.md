@@ -5,8 +5,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
 [![Tauri 2](https://img.shields.io/badge/Tauri-v2-orange?logo=tauri)](https://tauri.app/)
 
-> 🌐 **官方产品主页与在线交互演示**：[https://kyuuseiryuu.github.io/Deckify/](https://kyuuseiryuu.github.io/Deckify/)
-
 **LanDeck** 是一款基于 **Tauri 2 + Rust + React** 构建的桌面端智能控制面板应用，可以将同一局域网内的手机、平板等移动设备变为可自由定制的触控快捷控制台（类似 Stream Deck）。
 
 桌面端内置轻量级 HTTP 与 WebSocket 服务并内嵌移动端页面，移动端无需安装额外客户端，打开浏览器扫码（支持 PWA 添加到主屏幕）并输入配对码即可实时同步面板布局并远程触发桌面操作。
