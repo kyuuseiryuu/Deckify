@@ -2,12 +2,28 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { LocalAppInfo, SlotAction } from "../types";
 
-export const MODIFIER_OPTIONS = [
+export const isWindowsHost = (): boolean => {
+  if (typeof navigator === "undefined") return false;
+  return /win/i.test(navigator.userAgent || navigator.platform);
+};
+
+export const MODIFIER_OPTIONS_MAC = [
   { id: "cmd", label: "⌘ Cmd", symbol: "⌘" },
   { id: "ctrl", label: "⌃ Ctrl", symbol: "⌃" },
   { id: "alt", label: "⌥ Alt", symbol: "⌥" },
   { id: "shift", label: "⇧ Shift", symbol: "⇧" },
 ] as const;
+
+export const MODIFIER_OPTIONS_WIN = [
+  { id: "ctrl", label: "Ctrl", symbol: "Ctrl" },
+  { id: "alt", label: "Alt", symbol: "Alt" },
+  { id: "shift", label: "Shift", symbol: "Shift" },
+  { id: "cmd", label: "⊞ Win", symbol: "Win" },
+] as const;
+
+export const MODIFIER_OPTIONS = isWindowsHost()
+  ? MODIFIER_OPTIONS_WIN
+  : MODIFIER_OPTIONS_MAC;
 
 export const MAIN_KEY_OPTIONS = [
   "`",
@@ -37,7 +53,18 @@ export function formatHotkeySummary(
   key: string,
   repeatCount?: number
 ): string {
-  const parts = [...modifiers, key].filter(Boolean).map((p) => p.toUpperCase());
+  const isWin = isWindowsHost();
+  const formatMod = (m: string) => {
+    const lower = m.toLowerCase();
+    if (lower === "cmd" || lower === "meta" || lower === "win") {
+      return isWin ? "WIN" : "CMD";
+    }
+    return m.toUpperCase();
+  };
+  const parts = [
+    ...modifiers.map(formatMod),
+    key ? key.toUpperCase() : "",
+  ].filter(Boolean);
   const base = parts.length > 0 ? parts.join(" + ") : "未设置";
   const count = repeatCount ?? 1;
   return count > 1 ? `${base} ×${count}` : base;
@@ -100,10 +127,18 @@ export function ActionConfigFields({
         return;
       }
       const modifiers: string[] = [];
-      if (e.metaKey) modifiers.push("cmd");
-      if (e.ctrlKey) modifiers.push("ctrl");
-      if (e.altKey) modifiers.push("alt");
-      if (e.shiftKey) modifiers.push("shift");
+      const isWin = isWindowsHost();
+      if (isWin) {
+        if (e.ctrlKey) modifiers.push("ctrl");
+        if (e.altKey) modifiers.push("alt");
+        if (e.shiftKey) modifiers.push("shift");
+        if (e.metaKey) modifiers.push("cmd");
+      } else {
+        if (e.metaKey) modifiers.push("cmd");
+        if (e.ctrlKey) modifiers.push("ctrl");
+        if (e.altKey) modifiers.push("alt");
+        if (e.shiftKey) modifiers.push("shift");
+      }
 
       const normalizedKey = rawKey === " " ? "space" : rawKey.toLowerCase();
       onChange({
@@ -159,10 +194,14 @@ export function ActionConfigFields({
           onChange={(e) => {
             const path = e.target.value;
             const inferredName =
-              path.split("/").pop()?.replace(/\.app$/i, "") || action.name;
+              path.split(/[/\\]/).pop()?.replace(/\.(app|lnk|exe)$/i, "") || action.name;
             onChange({ type: "app", name: inferredName, path });
           }}
-          placeholder="/Applications/Safari.app"
+          placeholder={
+            isWindowsHost()
+              ? "C:\\Program Files\\... 或选择上方应用"
+              : "/Applications/Safari.app"
+          }
         />
       </div>
     );
@@ -256,7 +295,9 @@ export function ActionConfigFields({
 
         {!compact && (
           <span className="hint-text">
-            系统保留快捷键（如 Cmd+W / Cmd+Space / Cmd+Tab）请直接使用上方修饰键与主键选择器配置
+            {isWindowsHost()
+              ? "系统保留快捷键（如 Win+D / Ctrl+Shift+Esc / Alt+Tab）请直接使用上方修饰键与主键选择器配置"
+              : "系统保留快捷键（如 Cmd+W / Cmd+Space / Cmd+Tab）请直接使用上方修饰键与主键选择器配置"}
           </span>
         )}
       </div>

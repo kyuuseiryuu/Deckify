@@ -1,4 +1,4 @@
-name: Release macOS
+name: Release
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.1.0)"
+        description: "Release tag (e.g. v1.1.0)"
         required: false
         default: ""
 
@@ -84,4 +84,63 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Deckify-macOS-Universal
+          path: release-artifacts/*
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Windows NSIS installer
+        run: npm run tauri build -- --bundles nsis
+
+      - name: Prepare release artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          BUNDLE_DIR="src-tauri/target/release/bundle"
+          OUT_DIR="release-artifacts"
+          mkdir -p "$OUT_DIR"
+
+          if [ -d "$BUNDLE_DIR/nsis" ]; then
+            cp "$BUNDLE_DIR/nsis"/*.exe "$OUT_DIR/"
+          elif [ -f "src-tauri/target/release/deckify.exe" ]; then
+            cp "src-tauri/target/release/deckify.exe" "$OUT_DIR/"
+          fi
+
+          ls -lh "$OUT_DIR"
+
+      - name: Upload GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-artifacts/*.exe
+
+      - name: Upload workflow artifacts (manual run without tag)
+        if: "!startsWith(github.ref, 'refs/tags/v') && inputs.tag == ''"
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deckify-Windows-x64
           path: release-artifacts/*

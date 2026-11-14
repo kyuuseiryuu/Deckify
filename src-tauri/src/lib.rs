@@ -45,9 +45,60 @@ fn load_pairing_code(data_dir: &PathBuf) -> (String, bool) {
     (format!("{:04}", num), false)
 }
 
+pub fn detect_available_ips() -> Vec<crate::models::NetworkInterfaceInfo> {
+    let mut result = Vec::new();
+    if let Ok(ifas) = local_ip_address::list_afinet_netifas() {
+        for (name, ip) in ifas {
+            if let std::net::IpAddr::V4(ipv4) = ip {
+                let ip_str = ipv4.to_string();
+                if !ipv4.is_loopback() && !ipv4.is_link_local() {
+                    if !result
+                        .iter()
+                        .any(|item: &crate::models::NetworkInterfaceInfo| item.ip == ip_str)
+                    {
+                        result.push(crate::models::NetworkInterfaceInfo { name, ip: ip_str });
+                    }
+                }
+            }
+        }
+    }
+    result.sort_by(|a, b| {
+        let score = |ip: &str| {
+            if ip.starts_with("192.168.") {
+                1
+            } else if ip.starts_with("10.") {
+                2
+            } else if ip.starts_with("172.") {
+                3
+            } else {
+                4
+            }
+        };
+        score(&a.ip).cmp(&score(&b.ip)).then_with(|| a.name.cmp(&b.name))
+    });
+    if result.is_empty() {
+        let default_ip = local_ip_address::local_ip()
+            .map(|ip| ip.to_string())
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        result.push(crate::models::NetworkInterfaceInfo {
+            name: "默认网卡".to_string(),
+            ip: default_ip,
+        });
+    }
+    result
+}
+
 #[tauri::command]
 async fn get_server_info(state: State<'_, AppState>) -> Result<ServerInfo, String> {
     Ok(state.server_info().await)
+}
+
+#[tauri::command]
+async fn set_lan_ip(
+    state: State<'_, AppState>,
+    ip: String,
+) -> Result<ServerInfo, String> {
+    state.set_lan_ip(ip).await
 }
 
 #[tauri::command]
@@ -144,6 +195,10 @@ fn open_accessibility_settings() -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to open System Settings: {}", e))?;
     }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = crate::actions::open_windows_path_or_url("ms-settings:easeofaccess-keyboard");
+    }
     Ok(())
 }
 
@@ -156,6 +211,10 @@ fn open_external_url(url: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
+    #[cfg(target_os = "windows")]
+    {
+        crate::actions::open_windows_path_or_url(&url)?;
+    }
     Ok(())
 }
 
@@ -167,9 +226,11 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .unwrap_or_else(|_| PathBuf::from(".deckify-data"));
-            let lan_ip = local_ip_address::local_ip()
-                .map(|ip| ip.to_string())
-                .unwrap_or_else(|_| "127.0.0.1".to_string());
+            let available_ips = detect_available_ips();
+            let lan_ip = available_ips
+                .first()
+                .map(|ifa| ifa.ip.clone())
+                .unwrap_or_else(|| "127.0.0.1".to_string());
             let port = pick_port(19820);
             let (pairing_code, pairing_configured) = load_pairing_code(&data_dir);
 
@@ -283,6 +344,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_server_info,
+            set_lan_ip,
             set_pairing_code,
             get_online_count,
             list_layouts,
@@ -297,4 +359,19 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Deckify");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_available_ips() {
+        let ips = detect_available_ips();
+        println!("Available IPs: {:?}", ips);
+        assert!(!ips.is_empty(), "Should detect at least one IP");
+        for ifa in &ips {
+            assert!(!ifa.ip.starts_with("169.254."), "Should not include link-local");
+        }
+    }
 }

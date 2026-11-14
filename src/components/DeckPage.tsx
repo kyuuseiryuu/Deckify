@@ -4,7 +4,6 @@ import {
   WifiOff,
   Sun,
   Moon,
-  Lightbulb,
   BatteryCharging,
   Keyboard,
   Image as ImageIcon,
@@ -36,7 +35,6 @@ export function DeckPage() {
   const [showPicker, setShowPicker] = useState(false);
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
-  const [wakeLocked, setWakeLocked] = useState(false);
   const [isCharging, setIsCharging] = useState(false);
   const [flashMap, setFlashMap] = useState<Record<string, "ok" | "err">>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -57,17 +55,12 @@ export function DeckPage() {
     try {
       if ("wakeLock" in navigator) {
         if (wakeLockRef.current && !wakeLockRef.current.released) {
-          setWakeLocked(true);
           return;
         }
         wakeLockRef.current = await navigator.wakeLock.request("screen");
-        setWakeLocked(true);
-        wakeLockRef.current.addEventListener("release", () => {
-          setWakeLocked(false);
-        });
       }
     } catch {
-      setWakeLocked(false);
+      // Ignore wake lock failure (e.g. low battery)
     }
   };
 
@@ -388,13 +381,6 @@ export function DeckPage() {
             title="切换布局配置"
           >
             <LayoutGrid size={15} />
-          </button>
-          <button
-            className={`icon-btn ${wakeLocked ? "active" : ""}`}
-            onClick={requestWakeLock}
-            title={wakeLocked ? "屏幕常亮已开启" : "开启屏幕常亮"}
-          >
-            <Lightbulb size={15} />
           </button>
           <button
             className="icon-btn"

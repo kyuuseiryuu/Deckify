@@ -34,7 +34,7 @@
 
 ## 技术栈
 
-- **桌面壳与后端**：[Tauri 2](https://tauri.app/)、Rust（`axum` Web/WebSocket 服务、`tokio`、`rust-embed`、`enigo` 键鼠模拟、`sysinfo` 系统监控、`local-ip-address`、`plist`）
+- **桌面壳与后端**：[Tauri 2](https://tauri.app/)、Rust（`axum` Web/WebSocket 服务、`tokio`、`rust-embed`、`enigo` 键鼠模拟、`sysinfo` 系统监控、`local-ip-address`、Windows GDI+ / Shell 图标提取与进程管理、macOS `plist`）
 - **前端**：React 19、TypeScript、Vite 6、`lucide-react`、`qrcode.react`
 
 ---
@@ -70,7 +70,7 @@ Deckify/
 
 - **Node.js**（建议 18+）与 **npm**
 - **Rust** 工具链（`rustc` / `cargo`）
-- **Tauri 2 系统依赖**（macOS 需安装 Xcode Command Line Tools；其他平台请参考 [Tauri 官方文档](https://v2.tauri.app/start/prerequisites/)）
+- **Tauri 2 系统依赖**（Windows 需 WebView2 及 C++ Build Tools；macOS 需安装 Xcode Command Line Tools；其他平台请参考 [Tauri 官方文档](https://v2.tauri.app/start/prerequisites/)）
 
 ### 安装依赖
 
@@ -92,6 +92,9 @@ npm run tauri dev
 # 构建默认安装包
 npm run tauri build
 
+# 构建 Windows 安装包 (NSIS)
+npm run build-win
+
 # 仅构建 macOS .app 包
 npm run build-app
 ```
@@ -103,4 +106,6 @@ npm run build-app
 1. 启动 Deckify 桌面端后，确保手机/平板与电脑处于**同一局域网**。
 2. 使用移动设备扫描桌面端首页显示的二维码（或手动访问提示的局域网地址 `/deck`），输入配对码完成连接。
 3. 在桌面端新建或编辑控制面板布局，配置按键动作并保存，移动端会自动同步最新布局。
-4. **macOS 权限提示**：若使用「快捷键」或「文本输入」等模拟键盘操作，请在系统弹窗或「系统设置 → 隐私与安全性 → 辅助功能」中为 Deckify 授予辅助功能权限。
+4. **系统权限说明**：
+   - **Windows**：开箱即用，无需额外配置辅助功能权限。
+   - **macOS**：若使用「快捷键」或「文本输入」等模拟键盘操作，请在系统弹窗或「系统设置 → 隐私与安全性 → 辅助功能」中为 Deckify 授予辅助功能权限。

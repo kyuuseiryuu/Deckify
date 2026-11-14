@@ -95,13 +95,28 @@ impl AppState {
 
     pub async fn server_info(&self) -> ServerInfo {
         let guard = self.inner.read().await;
+        let available_ips = crate::detect_available_ips();
         ServerInfo {
             lan_ip: guard.lan_ip.clone(),
+            available_ips,
             port: guard.port,
             pairing_code: guard.pairing_code.clone(),
             pairing_configured: guard.pairing_configured,
             mobile_url: format!("http://{}:{}/deck", guard.lan_ip, guard.port),
+            platform: std::env::consts::OS.to_string(),
         }
+    }
+
+    pub async fn set_lan_ip(&self, ip: String) -> Result<ServerInfo, String> {
+        let clean = ip.trim().to_string();
+        if clean.is_empty() {
+            return Err("IP 地址不能为空".into());
+        }
+        {
+            let mut guard = self.inner.write().await;
+            guard.lan_ip = clean;
+        }
+        Ok(self.server_info().await)
     }
 
     pub async fn set_pairing_code(&self, code: String) -> Result<ServerInfo, String> {

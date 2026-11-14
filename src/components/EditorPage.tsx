@@ -43,7 +43,7 @@ import type {
 import { canPlaceSpan, computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
 import type { ThemeMode } from "../utils/theme";
-import { ActionConfigFields } from "./ActionConfigFields";
+import { ActionConfigFields, isWindowsHost } from "./ActionConfigFields";
 import { MacroStepsEditor } from "./MacroStepsEditor";
 import { MonitorTile } from "./MonitorTile";
 
@@ -237,11 +237,12 @@ export function EditorPage({
     setSelectedIndex(idx);
     const otherLayout =
       allLayouts.find((l) => l.id !== draft.id) ?? allLayouts[0];
+    const defaultMod = isWindowsHost() ? "ctrl" : "cmd";
     const defaults: Record<typeof type, { label: string; color: string; action: SlotAction }> = {
       hotkey: {
         label: "快捷键",
         color: "#1d4ed8",
-        action: { type: "hotkey", modifiers: ["cmd"], key: "c", repeatCount: 1 },
+        action: { type: "hotkey", modifiers: [defaultMod], key: "c", repeatCount: 1 },
       },
       text: {
         label: "输入文本",
@@ -303,7 +304,7 @@ export function EditorPage({
           type: "macro",
           steps: [
             {
-              action: { type: "hotkey", modifiers: ["cmd"], key: "c", repeatCount: 1 },
+              action: { type: "hotkey", modifiers: [defaultMod], key: "c", repeatCount: 1 },
               delayMs: 200,
             },
           ],
@@ -527,7 +528,7 @@ export function EditorPage({
               </div>
               <div className="apps-list">
                 {loadingApps ? (
-                  <div className="apps-loading">正在扫描 /Applications...</div>
+                  <div className="apps-loading">正在扫描本地应用...</div>
                 ) : filteredApps.length === 0 ? (
                   <div className="apps-loading">未找到匹配应用</div>
                 ) : (
@@ -578,7 +579,11 @@ export function EditorPage({
                 <Keyboard size={18} />
                 <div>
                   <div className="tpl-title">快捷键</div>
-                  <div className="tpl-desc">模拟组合键，如 Cmd+Shift+4</div>
+                  <div className="tpl-desc">
+                    {isWindowsHost()
+                      ? "模拟组合键，如 Ctrl+Shift+Esc 或 Win+Shift+S"
+                      : "模拟组合键，如 Cmd+Shift+4"}
+                  </div>
                 </div>
               </button>
               <button

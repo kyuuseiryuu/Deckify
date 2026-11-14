@@ -1157,6 +1157,39 @@ textarea {
   margin: 0;
 }
 
+.ip-selector-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: border-color 0.15s ease;
+}
+
+.ip-selector-wrap:hover {
+  border-color: var(--primary);
+}
+
+.ip-select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  max-width: 260px;
+}
+
+.ip-select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
 .empty-devices.compact {
   padding: 24px 16px;
   gap: 8px;

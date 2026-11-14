@@ -7,6 +7,61 @@ use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 
 use crate::models::{SlotAction, WebhookHeader};
 
+#[cfg(target_os = "windows")]
+pub fn open_windows_path_or_url(target: &str) -> Result<(), String> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+
+    let clean = target.trim();
+    if clean.is_empty() {
+        return Err("目标路径或 URL 不能为空".into());
+    }
+
+    let wide_target: Vec<u16> = OsStr::new(clean)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let wide_open: Vec<u16> = OsStr::new("open")
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    #[link(name = "shell32")]
+    extern "system" {
+        fn ShellExecuteW(
+            hwnd: *mut std::ffi::c_void,
+            lp_operation: *const u16,
+            lp_file: *const u16,
+            lp_parameters: *const u16,
+            lp_directory: *const u16,
+            n_show_cmd: i32,
+        ) -> isize;
+    }
+
+    let ret = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            wide_open.as_ptr(),
+            wide_target.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            1, // SW_SHOWNORMAL
+        )
+    };
+
+    if ret > 32 {
+        Ok(())
+    } else {
+        if clean.ends_with(".exe") || clean.ends_with(".bat") || clean.ends_with(".cmd") {
+            Command::new(clean)
+                .spawn()
+                .map_err(|e| format!("启动程序失败: {}", e))?;
+            return Ok(());
+        }
+        Err(format!("打开目标失败 (ShellExecuteW 错误码: {})", ret))
+    }
+}
+
 #[cfg(target_os = "macos")]
 pub fn is_accessibility_trusted(prompt: bool) -> bool {
     use std::ffi::c_void;
@@ -80,7 +135,7 @@ where
         }
         let res = match Enigo::new(&Settings::default()) {
             Ok(mut enigo) => f(&mut enigo),
-            Err(e) => Err(format!("Input init failed (请检查辅助功能权限): {}", e)),
+            Err(e) => Err(format!("Input init failed: {}", e)),
         };
         let _ = tx.send(res);
     })
@@ -105,7 +160,11 @@ pub fn execute_action(app: &tauri::AppHandle, action: &SlotAction) -> Result<(),
                 }
                 Ok(())
             }
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(target_os = "windows")]
+            {
+                open_windows_path_or_url(path)
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             {
                 Command::new(path)
                     .spawn()
@@ -148,19 +207,35 @@ pub fn execute_action(app: &tauri::AppHandle, action: &SlotAction) -> Result<(),
                     .map_err(|e| format!("Failed to open URL: {}", e))?;
                 Ok(())
             }
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(target_os = "windows")]
+            {
+                open_windows_path_or_url(url)
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             {
                 let _ = url;
                 Err("URL action not implemented on this OS".into())
             }
         }
         SlotAction::Command { command } => {
-            Command::new("sh")
-                .arg("-c")
-                .arg(command)
-                .spawn()
-                .map_err(|e| format!("Failed to run command: {}", e))?;
-            Ok(())
+            #[cfg(target_os = "windows")]
+            {
+                Command::new("cmd")
+                    .arg("/C")
+                    .arg(command)
+                    .spawn()
+                    .map_err(|e| format!("Failed to run command: {}", e))?;
+                Ok(())
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                Command::new("sh")
+                    .arg("-c")
+                    .arg(command)
+                    .spawn()
+                    .map_err(|e| format!("Failed to run command: {}", e))?;
+                Ok(())
+            }
         }
     }
 }
@@ -312,7 +387,6 @@ fn trigger_macos_hotkey(
         }
 
         unsafe {
-            // kCGEventSourceStateHIDSystemState = 1, kCGHIDEventTap = 0
             let source = CGEventSourceCreate(1);
             let post_key = |vk: u16, down: bool, flags: u64| {
                 let ev = CGEventCreateKeyboardEvent(source, vk, down);
@@ -469,9 +543,22 @@ fn trigger_media(app: &tauri::AppHandle, control: &str) -> Result<(), String> {
                 }
                 Ok(())
             }
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(target_os = "windows")]
             {
-                Err("Media volume control only implemented on macOS".into())
+                let key = match control {
+                    "vol_up" => Key::VolumeUp,
+                    "vol_down" => Key::VolumeDown,
+                    _ => Key::VolumeMute,
+                };
+                run_enigo_on_main(app, move |enigo| {
+                    enigo
+                        .key(key, Direction::Click)
+                        .map_err(|e| format!("音量按键触发失败: {}", e))
+                })
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            {
+                Err("Media volume control only implemented on macOS and Windows".into())
             }
         }
         "play_pause" | "next" | "prev" => {
@@ -548,7 +635,7 @@ fn trigger_webhook(
 
 fn parse_modifier(m: &str) -> Option<Key> {
     match m.to_lowercase().as_str() {
-        "cmd" | "command" | "meta" | "super" => Some(Key::Meta),
+        "cmd" | "command" | "meta" | "super" | "win" => Some(Key::Meta),
         "ctrl" | "control" => Some(Key::Control),
         "alt" | "option" => Some(Key::Alt),
         "shift" => Some(Key::Shift),
@@ -585,24 +672,78 @@ fn parse_main_key(k: &str) -> Result<Key, String> {
         "f10" => Ok(Key::F10),
         "f11" => Ok(Key::F11),
         "f12" => Ok(Key::F12),
-        "backquote" | "grave" => Ok(Key::Unicode('`')),
-        "minus" => Ok(Key::Unicode('-')),
-        "equal" => Ok(Key::Unicode('=')),
-        "bracketleft" => Ok(Key::Unicode('[')),
-        "bracketright" => Ok(Key::Unicode(']')),
-        "backslash" => Ok(Key::Unicode('\\')),
-        "semicolon" => Ok(Key::Unicode(';')),
-        "quote" => Ok(Key::Unicode('\'')),
-        "comma" => Ok(Key::Unicode(',')),
-        "period" => Ok(Key::Unicode('.')),
-        "slash" => Ok(Key::Unicode('/')),
-        _ => {
-            let mut chars = lower.chars();
-            if let (Some(ch), None) = (chars.next(), chars.next()) {
-                Ok(Key::Unicode(ch))
-            } else {
-                Err(format!("Unsupported key: {}", k))
-            }
-        }
+        "0" => Ok(Key::Num0),
+        "1" => Ok(Key::Num1),
+        "2" => Ok(Key::Num2),
+        "3" => Ok(Key::Num3),
+        "4" => Ok(Key::Num4),
+        "5" => Ok(Key::Num5),
+        "6" => Ok(Key::Num6),
+        "7" => Ok(Key::Num7),
+        "8" => Ok(Key::Num8),
+        "9" => Ok(Key::Num9),
+        "a" => Ok(Key::A),
+        "b" => Ok(Key::B),
+        "c" => Ok(Key::C),
+        "d" => Ok(Key::D),
+        "e" => Ok(Key::E),
+        "f" => Ok(Key::F),
+        "g" => Ok(Key::G),
+        "h" => Ok(Key::H),
+        "i" => Ok(Key::I),
+        "j" => Ok(Key::J),
+        "k" => Ok(Key::K),
+        "l" => Ok(Key::L),
+        "m" => Ok(Key::M),
+        "n" => Ok(Key::N),
+        "o" => Ok(Key::O),
+        "p" => Ok(Key::P),
+        "q" => Ok(Key::Q),
+        "r" => Ok(Key::R),
+        "s" => Ok(Key::S),
+        "t" => Ok(Key::T),
+        "u" => Ok(Key::U),
+        "v" => Ok(Key::V),
+        "w" => Ok(Key::W),
+        "x" => Ok(Key::X),
+        "y" => Ok(Key::Y),
+        "z" => Ok(Key::Z),
+        "`" | "backquote" | "grave" => Ok(Key::OEM3),
+        "-" | "minus" => Ok(Key::OEMMinus),
+        "=" | "equal" => Ok(Key::OEMPlus),
+        "[" | "bracketleft" => Ok(Key::OEM4),
+        "]" | "bracketright" => Ok(Key::OEM6),
+        "\\" | "backslash" => Ok(Key::OEM5),
+        ";" | "semicolon" => Ok(Key::OEM1),
+        "'" | "quote" => Ok(Key::OEM7),
+        "," | "comma" => Ok(Key::OEMComma),
+        "." | "period" => Ok(Key::OEMPeriod),
+        "/" | "slash" => Ok(Key::OEM2),
+        _ => Err(format!("Unsupported key: {}", k)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_modifiers() {
+        assert_eq!(parse_modifier("ctrl"), Some(Key::Control));
+        assert_eq!(parse_modifier("alt"), Some(Key::Alt));
+        assert_eq!(parse_modifier("shift"), Some(Key::Shift));
+        assert_eq!(parse_modifier("cmd"), Some(Key::Meta));
+        assert_eq!(parse_modifier("win"), Some(Key::Meta));
+    }
+
+    #[test]
+    fn test_parse_main_keys() {
+        assert_eq!(parse_main_key("c").unwrap(), Key::C);
+        assert_eq!(parse_main_key("v").unwrap(), Key::V);
+        assert_eq!(parse_main_key("1").unwrap(), Key::Num1);
+        assert_eq!(parse_main_key("f5").unwrap(), Key::F5);
+        assert_eq!(parse_main_key("space").unwrap(), Key::Space);
+        assert_eq!(parse_main_key("enter").unwrap(), Key::Return);
+    }
+}
+

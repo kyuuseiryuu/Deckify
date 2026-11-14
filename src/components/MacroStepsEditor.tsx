@@ -17,19 +17,22 @@ interface MacroStepsEditorProps {
   onChange: (steps: MacroStep[]) => void;
 }
 
+import { isWindowsHost } from "./ActionConfigFields";
+
 const DELAY_PRESETS = [0, 150, 300, 500, 1000] as const;
 
 function createDefaultStepAction(
   type: string,
   localApps: LocalAppInfo[]
 ): SlotAction {
+  const isWin = isWindowsHost();
   switch (type) {
     case "app": {
       const first = localApps[0];
       return {
         type: "app",
-        name: first?.name ?? "Safari",
-        path: first?.path ?? "/Applications/Safari.app",
+        name: first?.name ?? (isWin ? "应用" : "Safari"),
+        path: first?.path ?? (isWin ? "" : "/Applications/Safari.app"),
       };
     }
     case "media":
@@ -48,8 +51,10 @@ function createDefaultStepAction(
     case "text":
       return { type: "text", text: "", autoEnter: false };
     case "hotkey":
-    default:
-      return { type: "hotkey", modifiers: ["cmd"], key: "c", repeatCount: 1 };
+    default: {
+      const defaultMod = isWin ? "ctrl" : "cmd";
+      return { type: "hotkey", modifiers: [defaultMod], key: "c", repeatCount: 1 };
+    }
   }
 }
 

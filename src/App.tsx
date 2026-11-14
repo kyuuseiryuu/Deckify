@@ -6,6 +6,7 @@ import {
   getServerInfo,
   listLayouts,
   saveLayout,
+  setLanIp,
   setPairingCode,
 } from "./api";
 import { DeckPage } from "./components/DeckPage";
@@ -113,6 +114,11 @@ function DesktopApp() {
     setServerInfo(updated);
   };
 
+  const handleUpdateLanIp = async (ip: string) => {
+    const updated = await setLanIp(ip);
+    setServerInfo(updated);
+  };
+
   if (editingLayout) {
     return (
       <EditorPage
@@ -139,6 +145,7 @@ function DesktopApp() {
       onDuplicateLayout={handleDuplicateLayout}
       onDeleteLayout={handleDeleteLayout}
       onUpdatePairingCode={handleUpdatePairingCode}
+      onUpdateLanIp={handleUpdateLanIp}
     />
   );
 }

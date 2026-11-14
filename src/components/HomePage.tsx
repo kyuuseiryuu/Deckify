@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   ShieldAlert,
   KeyRound,
+  Network,
 } from "lucide-react";
 import {
   checkAccessibilityPermission,
@@ -32,6 +33,7 @@ interface HomePageProps {
   onDuplicateLayout: (layout: LayoutConfig) => void;
   onDeleteLayout: (layoutId: string) => void;
   onUpdatePairingCode: (code: string) => Promise<void>;
+  onUpdateLanIp: (ip: string) => Promise<void>;
 }
 
 function formatLastSeen(ts: number): string {
@@ -54,6 +56,7 @@ export function HomePage({
   onDuplicateLayout,
   onDeleteLayout,
   onUpdatePairingCode,
+  onUpdateLanIp,
 }: HomePageProps) {
   const [copied, setCopied] = useState(false);
   const [codeInput, setCodeInput] = useState("");
@@ -152,7 +155,28 @@ export function HomePage({
 
       <div className="home-grid">
         <section className="card qr-card">
-          <h2 className="card-title">扫码连接移动设备</h2>
+          <div className="card-header-row">
+            <h2 className="card-title">扫码连接移动设备</h2>
+            {serverInfo?.availableIps && serverInfo.availableIps.length > 1 && (
+              <div
+                className="ip-selector-wrap"
+                title="检测到多个网卡，点击可切换用于生成连接二维码与移动端访问的 IP"
+              >
+                <Network size={14} />
+                <select
+                  className="ip-select"
+                  value={serverInfo.lanIp}
+                  onChange={(e) => onUpdateLanIp(e.target.value)}
+                >
+                  {serverInfo.availableIps.map((ifa) => (
+                    <option key={ifa.ip} value={ifa.ip}>
+                      {ifa.name}: {ifa.ip}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
           <p className="card-desc">
             确保手机与电脑处于同一局域网，扫码后即可在手机上选择要使用的布局配置：
           </p>

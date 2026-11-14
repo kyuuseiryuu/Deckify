@@ -1,9 +1,16 @@
+export interface NetworkInterfaceInfo {
+  name: string;
+  ip: string;
+}
+
 export interface ServerInfo {
   lanIp: string;
+  availableIps?: NetworkInterfaceInfo[];
   port: number;
   pairingCode: string;
   pairingConfigured: boolean;
   mobileUrl: string;
+  platform?: string;
 }
 
 export interface WebhookHeader {

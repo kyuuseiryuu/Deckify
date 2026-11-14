@@ -2,12 +2,27 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NetworkInterfaceInfo {
+    pub name: String,
+    pub ip: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ServerInfo {
     pub lan_ip: String,
+    #[serde(default)]
+    pub available_ips: Vec<NetworkInterfaceInfo>,
     pub port: u16,
     pub pairing_code: String,
     pub pairing_configured: bool,
     pub mobile_url: String,
+    #[serde(default = "default_platform")]
+    pub platform: String,
+}
+
+fn default_platform() -> String {
+    std::env::consts::OS.to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

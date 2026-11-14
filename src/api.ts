@@ -10,6 +10,10 @@ export async function getServerInfo(): Promise<ServerInfo> {
   return invoke<ServerInfo>("get_server_info");
 }
 
+export async function setLanIp(ip: string): Promise<ServerInfo> {
+  return invoke<ServerInfo>("set_lan_ip", { ip });
+}
+
 export async function setPairingCode(code: string): Promise<ServerInfo> {
   return invoke<ServerInfo>("set_pairing_code", { code });
 }
