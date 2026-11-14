@@ -672,53 +672,125 @@ fn parse_main_key(k: &str) -> Result<Key, String> {
         "f10" => Ok(Key::F10),
         "f11" => Ok(Key::F11),
         "f12" => Ok(Key::F12),
+        #[cfg(target_os = "windows")]
         "0" => Ok(Key::Num0),
+        #[cfg(target_os = "windows")]
         "1" => Ok(Key::Num1),
+        #[cfg(target_os = "windows")]
         "2" => Ok(Key::Num2),
+        #[cfg(target_os = "windows")]
         "3" => Ok(Key::Num3),
+        #[cfg(target_os = "windows")]
         "4" => Ok(Key::Num4),
+        #[cfg(target_os = "windows")]
         "5" => Ok(Key::Num5),
+        #[cfg(target_os = "windows")]
         "6" => Ok(Key::Num6),
+        #[cfg(target_os = "windows")]
         "7" => Ok(Key::Num7),
+        #[cfg(target_os = "windows")]
         "8" => Ok(Key::Num8),
+        #[cfg(target_os = "windows")]
         "9" => Ok(Key::Num9),
+        #[cfg(target_os = "windows")]
         "a" => Ok(Key::A),
+        #[cfg(target_os = "windows")]
         "b" => Ok(Key::B),
+        #[cfg(target_os = "windows")]
         "c" => Ok(Key::C),
+        #[cfg(target_os = "windows")]
         "d" => Ok(Key::D),
+        #[cfg(target_os = "windows")]
         "e" => Ok(Key::E),
+        #[cfg(target_os = "windows")]
         "f" => Ok(Key::F),
+        #[cfg(target_os = "windows")]
         "g" => Ok(Key::G),
+        #[cfg(target_os = "windows")]
         "h" => Ok(Key::H),
+        #[cfg(target_os = "windows")]
         "i" => Ok(Key::I),
+        #[cfg(target_os = "windows")]
         "j" => Ok(Key::J),
+        #[cfg(target_os = "windows")]
         "k" => Ok(Key::K),
+        #[cfg(target_os = "windows")]
         "l" => Ok(Key::L),
+        #[cfg(target_os = "windows")]
         "m" => Ok(Key::M),
+        #[cfg(target_os = "windows")]
         "n" => Ok(Key::N),
+        #[cfg(target_os = "windows")]
         "o" => Ok(Key::O),
+        #[cfg(target_os = "windows")]
         "p" => Ok(Key::P),
+        #[cfg(target_os = "windows")]
         "q" => Ok(Key::Q),
+        #[cfg(target_os = "windows")]
         "r" => Ok(Key::R),
+        #[cfg(target_os = "windows")]
         "s" => Ok(Key::S),
+        #[cfg(target_os = "windows")]
         "t" => Ok(Key::T),
+        #[cfg(target_os = "windows")]
         "u" => Ok(Key::U),
+        #[cfg(target_os = "windows")]
         "v" => Ok(Key::V),
+        #[cfg(target_os = "windows")]
         "w" => Ok(Key::W),
+        #[cfg(target_os = "windows")]
         "x" => Ok(Key::X),
+        #[cfg(target_os = "windows")]
         "y" => Ok(Key::Y),
+        #[cfg(target_os = "windows")]
         "z" => Ok(Key::Z),
+        #[cfg(target_os = "windows")]
         "`" | "backquote" | "grave" => Ok(Key::OEM3),
+        #[cfg(target_os = "windows")]
         "-" | "minus" => Ok(Key::OEMMinus),
+        #[cfg(target_os = "windows")]
         "=" | "equal" => Ok(Key::OEMPlus),
+        #[cfg(target_os = "windows")]
         "[" | "bracketleft" => Ok(Key::OEM4),
+        #[cfg(target_os = "windows")]
         "]" | "bracketright" => Ok(Key::OEM6),
+        #[cfg(target_os = "windows")]
         "\\" | "backslash" => Ok(Key::OEM5),
+        #[cfg(target_os = "windows")]
         ";" | "semicolon" => Ok(Key::OEM1),
+        #[cfg(target_os = "windows")]
         "'" | "quote" => Ok(Key::OEM7),
+        #[cfg(target_os = "windows")]
         "," | "comma" => Ok(Key::OEMComma),
+        #[cfg(target_os = "windows")]
         "." | "period" => Ok(Key::OEMPeriod),
+        #[cfg(target_os = "windows")]
         "/" | "slash" => Ok(Key::OEM2),
+
+        #[cfg(not(target_os = "windows"))]
+        "`" | "backquote" | "grave" => Ok(Key::Unicode('`')),
+        #[cfg(not(target_os = "windows"))]
+        "-" | "minus" => Ok(Key::Unicode('-')),
+        #[cfg(not(target_os = "windows"))]
+        "=" | "equal" => Ok(Key::Unicode('=')),
+        #[cfg(not(target_os = "windows"))]
+        "[" | "bracketleft" => Ok(Key::Unicode('[')),
+        #[cfg(not(target_os = "windows"))]
+        "]" | "bracketright" => Ok(Key::Unicode(']')),
+        #[cfg(not(target_os = "windows"))]
+        "\\" | "backslash" => Ok(Key::Unicode('\\')),
+        #[cfg(not(target_os = "windows"))]
+        ";" | "semicolon" => Ok(Key::Unicode(';')),
+        #[cfg(not(target_os = "windows"))]
+        "'" | "quote" => Ok(Key::Unicode('\'')),
+        #[cfg(not(target_os = "windows"))]
+        "," | "comma" => Ok(Key::Unicode(',')),
+        #[cfg(not(target_os = "windows"))]
+        "." | "period" => Ok(Key::Unicode('.')),
+        #[cfg(not(target_os = "windows"))]
+        "/" | "slash" => Ok(Key::Unicode('/')),
+
+        s if s.chars().count() == 1 => Ok(Key::Unicode(s.chars().next().unwrap())),
         _ => Err(format!("Unsupported key: {}", k)),
     }
 }
@@ -738,9 +810,21 @@ mod tests {
 
     #[test]
     fn test_parse_main_keys() {
-        assert_eq!(parse_main_key("c").unwrap(), Key::C);
-        assert_eq!(parse_main_key("v").unwrap(), Key::V);
-        assert_eq!(parse_main_key("1").unwrap(), Key::Num1);
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(parse_main_key("c").unwrap(), Key::C);
+            assert_eq!(parse_main_key("v").unwrap(), Key::V);
+            assert_eq!(parse_main_key("1").unwrap(), Key::Num1);
+            assert_eq!(parse_main_key("`").unwrap(), Key::OEM3);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(parse_main_key("c").unwrap(), Key::Unicode('c'));
+            assert_eq!(parse_main_key("v").unwrap(), Key::Unicode('v'));
+            assert_eq!(parse_main_key("1").unwrap(), Key::Unicode('1'));
+            assert_eq!(parse_main_key("`").unwrap(), Key::Unicode('`'));
+            assert_eq!(parse_main_key("bracketleft").unwrap(), Key::Unicode('['));
+        }
         assert_eq!(parse_main_key("f5").unwrap(), Key::F5);
         assert_eq!(parse_main_key("space").unwrap(), Key::Space);
         assert_eq!(parse_main_key("enter").unwrap(), Key::Return);
