@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deckify - 将闲置手机平板秒变专业触控控制台 | 桌面智能面板</title>
+    <meta
+      name="description"
+      content="Deckify 是一款基于 Tauri 2 + Rust + React 构建的开源桌面端智能控制面板。免装客户端，手机扫码即可成为你的专业无线触控副屏（Stream Deck 绝佳替代方案）。"
+    />
+    <meta
+      name="keywords"
+      content="Deckify, Stream Deck, 智能控制台, 快捷键, 桌面副屏, 局域网触控, Tauri 2, Rust, 开源软件, 硬件监控"
+    />
+    <meta name="author" content="kyuuseiryuu" />
+    <meta name="theme-color" content="#080b11" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://kyuuseiryuu.github.io/Deckify/" />
+    <meta property="og:title" content="Deckify - 将闲置手机平板秒变专业触控控制台" />
+    <meta
+      property="og:description"
+      content="无需安装客户端，扫码即连。超低局域网延迟、自由网格编排、系统应用纯净图标提取、硬件监控与自动化宏指令。"
+    />
+    <meta property="og:image" content="./screenshots/editor-apps.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://kyuuseiryuu.github.io/Deckify/" />
+    <meta property="twitter:title" content="Deckify - 开源触控 Stream Deck" />
+    <meta
+      property="twitter:description"
+      content="基于 Tauri 2 + Rust 构建的跨平台无线控制面板，零客户端安装，打造属于你的生产力副屏。"
+    />
+    <meta property="twitter:image" content="./screenshots/editor-apps.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="./assets/favicon.png" />
+    <link rel="apple-touch-icon" href="./assets/icon.png" />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- Background Ambient Lighting -->
+    <div class="ambient-glow-container" aria-hidden="true">
+      <div class="ambient-glow-1"></div>
+      <div class="ambient-glow-2"></div>
+      <div class="ambient-glow-3"></div>
+      <div class="grid-overlay"></div>
+    </div>
+
+    <!-- Sticky Navigation Bar -->
+    <header class="header-nav">
+      <div class="container nav-content">
+        <a href="#" class="brand-link" aria-label="Deckify 首页">
+          <div class="brand-logo-wrap">
+            <img src="./assets/icon.png" alt="Deckify Logo" class="brand-logo-img" />
+          </div>
+          <span class="brand-name">Deckify</span>
+          <span class="brand-tag release-version-tag">v1.1.1</span>
+        </a>
+
+        <nav>
+          <ul class="nav-links">
+            <li><a href="#simulator" class="nav-link">在线体验</a></li>
+            <li><a href="#features" class="nav-link">核心特性</a></li>
+            <li><a href="#screenshots" class="nav-link">实景预览</a></li>
+            <li><a href="#actions" class="nav-link">动作生态</a></li>
+            <li><a href="#quickstart" class="nav-link">快速开始</a></li>
+            <li><a href="#faq" class="nav-link">常见问题</a></li>
+          </ul>
+        </nav>
+
+        <div class="nav-actions">
+          <a
+            href="https://github.com/kyuuseiryuu/Deckify"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-github"
+            title="在 GitHub 上查看源码与 Star"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
+              />
+            </svg>
+            <span>GitHub</span>
+          </a>
+
+          <a href="#download" class="btn-nav-download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>免费下载</span>
+          </a>
+
+          <button class="mobile-menu-btn" aria-label="切换移动菜单">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="container">
+          <div class="hero-pill-wrap">
+            <span class="hero-pill-dot"></span>
+            <span>Deckify <span class="release-version-tag">v1.1.1</span> 正式发布 · 开源免费且无限制</span>
+          </div>
+
+          <h1 class="hero-title">
+            把你的闲置手机与平板，<br />
+            <span class="text-gradient">变成随心所欲的专业触控控制台</span>
+          </h1>
+
+          <p class="hero-subtitle">
+            移动端免装任何 App，扫码即连。基于 <strong>Tauri 2 + Rust</strong> 打造，纯局域网毫秒级低延迟。<br />
+            支持多网格自由排版、本地应用无角标图标提取、实时硬件监控与多步自动化宏。
+          </p>
+
+          <div class="hero-cta-group">
+            <a href="#download" class="btn-primary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>立即下载桌面端</span>
+            </a>
+
+            <a href="#simulator" class="btn-secondary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>在线试玩控制台</span>
+            </a>
+          </div>
+
+          <div class="hero-highlights-bar">
+            <div class="highlight-item">
+              <span class="highlight-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </span>
+              <span><strong>零客户端安装</strong>：纯 Web / PWA 扫码即用</span>
+            </div>
+
+            <div class="highlight-item">
+              <span class="highlight-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+              </span>
+              <span><strong>毫秒级延迟</strong>：Rust Axum 极速双向通信</span>
+            </div>
+
+            <div class="highlight-item">
+              <span class="highlight-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+              </span>
+              <span><strong>跨平台支持</strong>：Windows 10/11 & macOS 通用</span>
+            </div>
+
+            <div class="highlight-item">
+              <span class="highlight-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <span><strong>100% 局域网传输</strong>：零云端依赖，保护隐私</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live Interactive Simulator Section -->
+      <section id="simulator" class="simulator-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Interactive Preview</span>
+            <h2 class="section-title">不用等安装，先在网页里点一点</h2>
+            <p class="section-desc">
+              下方是一个运行中的虚拟 Deckify 控制台。点击任意按键，体验按键触感、实时动作触发与动态硬件监控反馈！
+            </p>
+          </div>
+
+          <div class="sim-container">
+            <!-- Simulator Switcher Bar -->
+            <div class="sim-controls-bar">
+              <div class="sim-preset-tabs">
+                <button class="sim-tab-btn active" data-preset="dev">
+                  <span>💻</span> 开发者控制台
+                </button>
+                <button class="sim-tab-btn" data-preset="media">
+                  <span>🎬</span> 影音与直播
+                </button>
+                <button class="sim-tab-btn" data-preset="ops">
+                  <span>📊</span> 硬件运维监控
+                </button>
+              </div>
+
+              <div class="sim-live-indicator">
+                <span class="pulse-dot"></span>
+                <span>局域网服务运行中 · 192.168.1.108:19820</span>
+              </div>
+            </div>
+
+            <!-- Virtual Tablet Device Frame -->
+            <div class="tablet-device">
+              <!-- Top Device Status Bar -->
+              <div class="device-top-bar">
+                <div class="device-status-left">
+                  <span>15:42</span>
+                  <span class="badge-connected">已配对 (WS Connected)</span>
+                </div>
+                <div class="device-notch"></div>
+                <div class="device-status-right">
+                  <span>Wi-Fi 5G</span>
+                  <span>92% ⚡</span>
+                </div>
+              </div>
+
+              <!-- Deck Grid Interactive Screen -->
+              <div class="deck-screen">
+                <div id="sim-deck-grid" class="deck-grid">
+                  <!-- Dynamically generated by main.js -->
+                </div>
+
+                <!-- Event Action Log Console -->
+                <div class="device-log-bar">
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                    <span class="log-prefix">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                      </svg>
+                      WS Push
+                    </span>
+                    <span id="sim-log-content" class="log-content">
+                      点击上方任意按键触发桌面端动作...
+                    </span>
+                  </div>
+                  <span id="sim-log-latency" class="log-latency">1.8ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bento Grid Features Section -->
+      <section id="features" class="features-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Core Capabilities</span>
+            <h2 class="section-title">专为极致桌面生产力打造</h2>
+            <p class="section-desc">
+              融合轻量级原生桌面技术与现代移动 Web 体验，带给你前所未有的智能副屏操控感。
+            </p>
+          </div>
+
+          <div class="bento-grid">
+            <!-- Bento 1 (Large) -->
+            <div class="bento-card col-2">
+              <div>
+                <div class="bento-icon indigo">📱</div>
+                <h3 class="bento-card-title">零客户端安装，扫码即用</h3>
+                <p class="bento-card-text">
+                  桌面端内置高性能 Axum HTTP + WebSocket 静态服务，启动后自动生成配对二维码。用手机或平板自带浏览器扫一扫即可连接，支持「添加到主屏幕」享受无任何浏览器顶底边栏的纯净全屏 PWA 体验。
+                </p>
+              </div>
+              <div class="bento-pill-tags">
+                <span class="pill-tag">免装 App</span>
+                <span class="pill-tag">PWA 原生全屏</span>
+                <span class="pill-tag">屏幕防息屏唤醒锁</span>
+                <span class="pill-tag">自定义安全配对码</span>
+              </div>
+            </div>
+
+            <!-- Bento 2 -->
+            <div class="bento-card">
+              <div>
+                <div class="bento-icon cyan">⚡</div>
+                <h3 class="bento-card-title">Tauri 2 + Rust 极速底座</h3>
+                <p class="bento-card-text">
+                  告别 Electron 臃肿的百兆内存开销！Deckify 采用 Tauri 2 搭配 Rust 后端，桌面端仅占用约 20MB 物理内存，CPU 负荷趋近于零，关闭主窗口后自动静默驻留系统托盘。
+                </p>
+              </div>
+              <div class="bento-pill-tags">
+                <span class="pill-tag">&lt; 30MB 内存占用</span>
+                <span class="pill-tag">系统托盘驻留</span>
+                <span class="pill-tag">异步并发网络</span>
+              </div>
+            </div>
+
+            <!-- Bento 3 -->
+            <div class="bento-card">
+              <div>
+                <div class="bento-icon emerald">🎨</div>
+                <h3 class="bento-card-title">可视化多网格排版</h3>
+                <p class="bento-card-text">
+                  随心所欲定义网格行数与列数（如 3x4、4x5、5x8），支持按键跨行跨列（colSpan / rowSpan），无论是紧凑按键还是超大仪表盘都能自由绘制。
+                </p>
+              </div>
+              <div class="bento-pill-tags">
+                <span class="pill-tag">自由行列数</span>
+                <span class="pill-tag">跨行跨列尺寸</span>
+                <span class="pill-tag">深浅双色主题</span>
+              </div>
+            </div>
+
+            <!-- Bento 4 (Large) -->
+            <div class="bento-card col-2">
+              <div>
+                <div class="bento-icon purple">🔍</div>
+                <h3 class="bento-card-title">智能应用扫描与纯净图标提取</h3>
+                <p class="bento-card-text">
+                  彻底告别在文件夹里手动找图标的繁琐！Deckify 桌面端内置原生应用索引引擎，一键扫描 Windows 与 macOS 系统所有已安装应用，并从二进制可执行文件中提取高分辨率透明图标（彻底告别 Windows 快捷方式的左下角小箭头！）。
+                </p>
+              </div>
+              <div class="bento-pill-tags">
+                <span class="pill-tag">Windows GDI+ 原生提取</span>
+                <span class="pill-tag">macOS Plist 自动解析</span>
+                <span class="pill-tag">无角标纯净图</span>
+                <span class="pill-tag">自定义图片上传</span>
+              </div>
+            </div>
+
+            <!-- Bento 5 -->
+            <div class="bento-card">
+              <div>
+                <div class="bento-icon amber">📊</div>
+                <h3 class="bento-card-title">实时硬件状态遥测</h3>
+                <p class="bento-card-text">
+                  每 1.5 秒从桌面端采集并广播 CPU 使用率、物理内存占用及网络上下行吞吐速率，直接在触控板上呈现动态条形进度与数值仪表，把手机变成电脑状态副屏。
+                </p>
+              </div>
+              <div class="bento-pill-tags">
+                <span class="pill-tag">sysinfo 硬件监控</span>
+                <span class="pill-tag">网速实时动态走势</span>
+                <span class="pill-tag">动态告警变色</span>
+              </div>
+            </div>
+
+            <!-- Bento 6 -->
+            <div class="bento-card">
+              <div>
+                <div class="bento-icon rose">🔒</div>
+                <h3 class="bento-card-title">纯局域网传输，隐私零泄露</h3>
+                <p class="bento-card-text">
+                  数据仅在同一 Wi-Fi 或局域网内点对点加密传输，无需注册账号、无需公网中转服务器。内置多网卡 IP 快速切换，家庭与办公网络切换自如。
+                </p>
+              </div>
+              <div class="bento-pill-tags">
+                <span class="pill-tag">100% 局域网传输</span>
+                <span class="pill-tag">多网卡一键切换</span>
+                <span class="pill-tag">无第三方遥测追踪</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Real Screenshots Showcase Section -->
+      <section id="screenshots" class="screenshots-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Interface Showcase</span>
+            <h2 class="section-title">精心打磨的桌面管理端</h2>
+            <p class="section-desc">
+              简洁克制的高颜值界面设计，无论是配对网络还是精细调教按键，体验一气呵成。
+            </p>
+          </div>
+
+          <!-- Tabs Nav -->
+          <div class="screen-tabs-nav">
+            <button class="screen-tab-btn active" data-screen="home">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              <span>首页与网络配对</span>
+            </button>
+
+            <button class="screen-tab-btn" data-screen="apps">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              <span>网格编辑与应用扫描</span>
+            </button>
+
+            <button class="screen-tab-btn" data-screen="widgets">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+              <span>快捷组件与监控配置</span>
+            </button>
+          </div>
+
+          <!-- Preview Card -->
+          <div class="screen-preview-card">
+            <div class="screen-image-wrap" title="点击查看高清大图">
+              <img
+                id="screen-main-img"
+                src="./screenshots/home.png"
+                alt="Deckify 首页与网络配对"
+                class="screen-image"
+              />
+              <div class="screen-image-overlay">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  <line x1="11" y1="8" x2="11" y2="14"></line>
+                  <line x1="8" y1="11" x2="14" y2="11"></line>
+                </svg>
+                <span>点击放大查看高清全景图</span>
+              </div>
+            </div>
+
+            <div class="screen-caption">
+              <div>
+                <h4 id="screen-caption-title" class="screen-caption-title">首页与网络配对管理</h4>
+                <p id="screen-caption-desc" class="screen-caption-desc">
+                  桌面端启动后自动分配局域网 IP 与端口，支持多网卡快速切换、二维码扫码配对及在线设备状态监控。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action Matrix Section -->
+      <section id="actions" class="actions-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Versatile Actions</span>
+            <h2 class="section-title">内置 11 种核心动作类型</h2>
+            <p class="section-desc">
+              从简单快捷键到多步复杂编排，覆盖应用、系统、多媒体与智能工作流的每个细节。
+            </p>
+          </div>
+
+          <div class="action-matrix-grid">
+            <div class="action-card">
+              <div class="action-card-icon">🚀</div>
+              <div class="action-card-info">
+                <h4>应用启动 <span class="action-type-code">App</span></h4>
+                <p>自动扫描本地所有安装应用，一键极速调起或前置指定软件窗口。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">⌨️</div>
+              <div class="action-card-info">
+                <h4>模拟快捷键 <span class="action-type-code">Hotkey</span></h4>
+                <p>模拟单键或 Ctrl/Cmd/Alt/Shift 复杂组合键，支持按键重复触发。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">✍️</div>
+              <div class="action-card-info">
+                <h4>文本自动录入 <span class="action-type-code">Text</span></h4>
+                <p>一键自动模拟输入预设文本、常用提示词或代码片段，可配置自动回车。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">🎵</div>
+              <div class="action-card-info">
+                <h4>多媒体控制 <span class="action-type-code">Media</span></h4>
+                <p>播放、暂停、上一首、下一曲、系统音量微调与全局一键静音。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">📊</div>
+              <div class="action-card-info">
+                <h4>系统监控仪表 <span class="action-type-code">Monitor</span></h4>
+                <p>每 1.5 秒更新 CPU 负荷、内存占用与网络上下行吞吐速率走势。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">🪄</div>
+              <div class="action-card-info">
+                <h4>自动化宏指令 <span class="action-type-code">Macro</span></h4>
+                <p>将快捷键、文本与自定义延迟（delayMs）顺序串联为一键执行的工作流。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">🔀</div>
+              <div class="action-card-info">
+                <h4>面板布局切换 <span class="action-type-code">Switch Layout</span></h4>
+                <p>在移动端一键平滑跳转到其他专属控制板，随心翻页无限拓展。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">🌐</div>
+              <div class="action-card-info">
+                <h4>打开指定网址 <span class="action-type-code">URL</span></h4>
+                <p>在电脑默认浏览器中快速打开工作台网址、文档或项目仓库。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">💻</div>
+              <div class="action-card-info">
+                <h4>Shell 终端命令 <span class="action-type-code">Command</span></h4>
+                <p>执行自定义命令行或自动化脚本，极客开发者的绝佳副手。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">🔗</div>
+              <div class="action-card-info">
+                <h4>HTTP Webhook <span class="action-type-code">Webhook</span></h4>
+                <p>支持 GET/POST 请求发送自定义 JSON 载荷，联动 Home Assistant 或云端接口。</p>
+              </div>
+            </div>
+
+            <div class="action-card">
+              <div class="action-card-icon">🖼️</div>
+              <div class="action-card-info">
+                <h4>图片与状态看板 <span class="action-type-code">Image</span></h4>
+                <p>按键支持自定义图片渲染与定时刷新，可用作动态状态展示板。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hardware Stream Deck Comparison -->
+      <section class="comparison-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Why Deckify</span>
+            <h2 class="section-title">重新定义你的控制中心</h2>
+            <p class="section-desc">
+              相比昂贵笨重的物理控制台，发挥旧设备余热不仅更环保，且拥有无可比拟的自由度。
+            </p>
+          </div>
+
+          <div class="comparison-table-wrap">
+            <table class="compare-table">
+              <thead>
+                <tr>
+                  <th class="compare-feature-col">对比维度</th>
+                  <th class="compare-deckify-col">✨ Deckify 软硬件结合方案</th>
+                  <th class="compare-hardware-col">📦 传统物理 Stream Deck</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="compare-feature-col">获取成本</td>
+                  <td class="compare-deckify-col">
+                    <span class="badge-tag-pos">✓ 完全免费开源（利用旧手机/平板）</span>
+                  </td>
+                  <td class="compare-hardware-col">
+                    <span class="badge-tag-neg">✗ 售价 ¥1000 - ¥2000+</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="compare-feature-col">屏幕与触控体验</td>
+                  <td class="compare-deckify-col">
+                    <span class="badge-tag-pos">✓ 手机/iPad 高清视网膜 OLED / 顺滑触控</span>
+                  </td>
+                  <td class="compare-hardware-col">
+                    <span class="badge-tag-neg">✗ 低分辨率小型 LCD 软塑料微动按键</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="compare-feature-col">网格布局自由度</td>
+                  <td class="compare-deckify-col">
+                    <span class="badge-tag-pos">✓ 自由自定义行列（3x4/4x6/5x8）、跨行跨列</span>
+                  </td>
+                  <td class="compare-hardware-col">
+                    <span class="badge-tag-neg">✗ 物理按键排布固定（如死板的 15 键）</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="compare-feature-col">连接形态</td>
+                  <td class="compare-deckify-col">
+                    <span class="badge-tag-pos">✓ 局域网 Wi-Fi 无线连接，摆脱桌面线缆</span>
+                  </td>
+                  <td class="compare-hardware-col">
+                    <span class="badge-tag-neg">✗ 必须占用电脑物理 USB 接口并接线</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="compare-feature-col">多设备协同</td>
+                  <td class="compare-deckify-col">
+                    <span class="badge-tag-pos">✓ 支持多部手机、平板同时在线协同工作</span>
+                  </td>
+                  <td class="compare-hardware-col">
+                    <span class="badge-tag-neg">✗ 多台设备需重复购买多件昂贵硬件</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="compare-feature-col">移动端安装负担</td>
+                  <td class="compare-deckify-col">
+                    <span class="badge-tag-pos">✓ 零客户端！浏览器扫码即连 / 支持 PWA</span>
+                  </td>
+                  <td class="compare-hardware-col">
+                    <span class="badge-tag-neg">✗ 虚拟版要求月费订阅或安装专用客户端</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3-Steps Quickstart Section -->
+      <section id="quickstart" class="quickstart-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Quickstart</span>
+            <h2 class="section-title">三步快速开启高效体验</h2>
+            <p class="section-desc">
+              无需繁复配置，不到 1 分钟即可将你的移动设备打造成全能控制器。
+            </p>
+          </div>
+
+          <div class="steps-grid">
+            <div class="step-card">
+              <span class="step-number">01</span>
+              <div class="step-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </div>
+              <h3 class="step-title">运行 Deckify 桌面端</h3>
+              <p class="step-desc">
+                下载并启动 Deckify（支持 Windows 与 macOS）。桌面端会自动启动轻量级局域网服务，并在首页显示当前电脑的局域网 IP、端口与连接二维码。
+              </p>
+            </div>
+
+            <div class="step-card">
+              <span class="step-number">02</span>
+              <div class="step-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </div>
+              <h3 class="step-title">手机扫码配对</h3>
+              <p class="step-desc">
+                确保手机/平板与电脑处于同一 Wi-Fi 局域网，打开相机或浏览器扫描二维码，输入配对码完成鉴权。推荐在浏览器菜单中选择「添加到主屏幕」开启纯净全屏。
+              </p>
+            </div>
+
+            <div class="step-card">
+              <span class="step-number">03</span>
+              <div class="step-icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </div>
+              <h3 class="step-title">自由编排专属布局</h3>
+              <p class="step-desc">
+                在电脑端点击「新建布局」或直接编辑预设，添加你喜爱的常用应用、多步宏指令、多媒体控制或硬件监控瓦片。手机端将实时自动同步最新按键。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Download Section -->
+      <section id="download" class="download-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">Get Started</span>
+            <h2 class="section-title">下载 Deckify 桌面端</h2>
+            <p class="section-desc">
+              选择适合你操作系统的安装包，开启你的智能副屏时代。
+            </p>
+          </div>
+
+          <div class="download-cards-grid">
+            <!-- Windows Card -->
+            <div class="download-card">
+              <div>
+                <div class="download-header">
+                  <div class="download-os-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801"/>
+                    </svg>
+                  </div>
+                  <div class="download-title">
+                    <h3>Windows 桌面端</h3>
+                    <span>适用 Windows 10 / 11 (64-bit)</span>
+                  </div>
+                </div>
+
+                <ul class="download-features-list">
+                  <li>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>开箱即用，NSIS 现代化安装包</span>
+                  </li>
+                  <li>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>原生 GDI+ 纯净无角标应用图标提取</span>
+                  </li>
+                  <li>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>自动托盘后台驻留与轻量低占用</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <a
+                  id="btn-download-win"
+                  href="https://github.com/kyuuseiryuu/Deckify/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn-download-action btn-win"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>下载 Windows 安装程序 (.exe)</span>
+                </a>
+                <p class="download-meta-info">当前版本: <span class="release-version-tag">v1.1.1</span> · 64 位安装程序</p>
+              </div>
+            </div>
+
+            <!-- macOS Card -->
+            <div class="download-card">
+              <div>
+                <div class="download-header">
+                  <div class="download-os-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.12c.62-.75 1.04-1.8 1.01-2.85-.9.04-2 .6-2.65 1.34-.56.64-1.06 1.71-1.01 2.74 1.01.08 2.03-.48 2.65-1.23z"/>
+                    </svg>
+                  </div>
+                  <div class="download-title">
+                    <h3>macOS 桌面端</h3>
+                    <span>适用 macOS 11.0+ (Universal)</span>
+                  </div>
+                </div>
+
+                <ul class="download-features-list">
+                  <li>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Apple Silicon (M1/M2/M3/M4) 与 Intel 通用二进制</span>
+                  </li>
+                  <li>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>DMG 一键拖拽安装或原生 .app 压缩包</span>
+                  </li>
+                  <li>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>内置 macOS 辅助功能权限状态侦测与快速跳转</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <a
+                  id="btn-download-mac"
+                  href="https://github.com/kyuuseiryuu/Deckify/releases/latest"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn-download-action btn-mac"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>下载 macOS 安装包 (.dmg)</span>
+                </a>
+                <p class="download-meta-info">当前版本: <span class="release-version-tag">v1.1.1</span> · 通用架构 (Universal)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Developer Source Build -->
+          <div class="source-build-box">
+            <div class="source-build-text">
+              <h4>想要自行从源码构建？</h4>
+              <p>需要 Node.js 20+ 与 Rust 工具链支持：</p>
+            </div>
+            <div class="code-snippet">
+              <code>git clone https://github.com/kyuuseiryuu/Deckify.git && cd Deckify && npm install && npm run tauri dev</code>
+              <button class="btn-copy" data-copy="git clone https://github.com/kyuuseiryuu/Deckify.git && cd Deckify && npm install && npm run tauri dev" title="复制构建命令">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ Section -->
+      <section id="faq" class="faq-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="section-tag">FAQ</span>
+            <h2 class="section-title">常见问题解答</h2>
+            <p class="section-desc">解答关于设备兼容、网络连接与系统权限的常见疑问。</p>
+          </div>
+
+          <div class="faq-container">
+            <div class="faq-item active">
+              <button class="faq-question">
+                <span>手机或平板上真的完全不需要安装任何客户端或 App 吗？</span>
+                <span class="faq-icon-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+              </button>
+              <div class="faq-answer">
+                <p>
+                  是的！桌面端启动时会自动在本地局域网开启一个内嵌的轻量级 HTTP Web 服务器和 WebSocket 通道。移动设备只需打开 Safari、Chrome 或任意现代浏览器，扫描二维码访问该网页即可。
+                </p>
+                <p style="margin-top:8px;">
+                  我们强烈建议你在移动端浏览器中点击「分享 / 选项 → 添加到主屏幕」，即可利用现代 PWA（渐进式 Web 应用）技术，以全屏无地址栏的形式运行，并自带防息屏唤醒锁（WakeLock），体验完全不输原生客户端！
+                </p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>电脑和移动设备不在同一个 Wi-Fi 可以使用吗？</span>
+                <span class="faq-icon-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+              </button>
+              <div class="faq-answer">
+                <p>
+                  Deckify 的核心设计理念是<strong>纯本地局域网（LAN）零云端传输</strong>以确保极致的低延迟和隐私安全。因此，手机/平板需要与电脑处于同一个局域网（例如连接同一个无线路由器或电脑开启的移动热点）。
+                </p>
+                <p style="margin-top:8px;">
+                  如果电脑拥有多个网卡（例如同时连了有线网、Wi-Fi、虚拟机或 WSL 虚拟网卡），你可以在 Deckify 桌面端首页右上角轻松一键切换要绑定的局域网 IP。
+                </p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>按键触发的延迟高不高？会不会有明显滞后？</span>
+                <span class="faq-icon-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+              </button>
+              <div class="faq-answer">
+                <p>
+                  几乎无感知！得益于 Rust 的高并发异步网络库 Axum 与 Tokio，WebSocket 消息在局域网内的往返时间通常在 <strong>1ms ~ 3ms</strong> 之间。配合原生键鼠模拟驱动，点击瞬间即在桌面端完成响应。
+                </p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>macOS 系统上模拟快捷键或文本输入没有反应怎么办？</span>
+                <span class="faq-icon-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+              </button>
+              <div class="faq-answer">
+                <p>
+                  由于 macOS 严格的安全沙盒机制，模拟全局键盘敲击需要系统授权。请打开「系统设置 → 隐私与安全性 → 辅助功能 (Accessibility)」，将 Deckify 添加或开启授权开关。授权完成后无需重启，即可正常模拟所有快捷键与自动化输入。
+                </p>
+                <p style="margin-top:8px;">
+                  Windows 系统则开箱即用，无需额外设置辅助功能权限。
+                </p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>可以同时让多个手机或平板连接到同一台电脑吗？</span>
+                <span class="faq-icon-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+              </button>
+              <div class="faq-answer">
+                <p>
+                  完全支持！Deckify 的服务端支持多客户端长连接并发。你可以在左边放一台 iPhone 作为多媒体与麦克风切换台，右边立一块旧 iPad 作为开发效率与系统监控仪表盘，两者各自选择不同面板独立工作，互不干扰。
+                </p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>是否支持按键跨行跨列（比如做一个 2x1 宽按钮或 2x2 大按钮）？</span>
+                <span class="faq-icon-arrow">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+              </button>
+              <div class="faq-answer">
+                <p>
+                  支持！在布局编辑器中，每一个按键槽位都可以单独配置 <code>跨列数 (colSpan)</code> 和 <code>跨行数 (rowSpan)</code>。例如硬件监控的大表盘可以设为 2x2，核心播放键可以设为 2x1，满足你对专业排版的所有想象。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal Lightbox for Fullscreen Screenshot Preview -->
+    <div id="lightbox-modal" class="lightbox-modal" role="dialog" aria-modal="true" aria-label="全屏预览截图">
+      <div class="lightbox-content">
+        <button id="lightbox-close" class="lightbox-close-btn" aria-label="关闭预览">✕</button>
+        <img id="lightbox-img" src="./screenshots/home.png" alt="高清全屏截图" class="lightbox-img" />
+      </div>
+    </div>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-top">
+          <div class="footer-brand">
+            <div class="brand-link" style="margin-bottom: 8px;">
+              <div class="brand-logo-wrap">
+                <img src="./assets/icon.png" alt="Deckify Logo" class="brand-logo-img" />
+              </div>
+              <span class="brand-name">Deckify</span>
+            </div>
+            <p class="footer-desc">
+              一款现代化的桌面端智能控制面板，基于 Tauri 2 + Rust + React 构建。将闲置手机平板秒变专业触控副屏，开启极速生产力。
+            </p>
+          </div>
+
+          <div class="footer-links-group">
+            <div class="footer-col">
+              <h5>产品导航</h5>
+              <ul>
+                <li><a href="#simulator">在线体验</a></li>
+                <li><a href="#features">核心特性</a></li>
+                <li><a href="#screenshots">实景预览</a></li>
+                <li><a href="#actions">动作生态</a></li>
+                <li><a href="#download">下载安装</a></li>
+              </ul>
+            </div>
+
+            <div class="footer-col">
+              <h5>开源社区</h5>
+              <ul>
+                <li><a href="https://github.com/kyuuseiryuu/Deckify" target="_blank" rel="noopener noreferrer">GitHub 仓库</a></li>
+                <li><a href="https://github.com/kyuuseiryuu/Deckify/releases" target="_blank" rel="noopener noreferrer">版本更新日志</a></li>
+                <li><a href="https://github.com/kyuuseiryuu/Deckify/issues" target="_blank" rel="noopener noreferrer">提交 Issue / 反馈</a></li>
+                <li><a href="https://github.com/kyuuseiryuu/Deckify/blob/main/README.md" target="_blank" rel="noopener noreferrer">项目文档</a></li>
+              </ul>
+            </div>
+
+            <div class="footer-col">
+              <h5>技术支持</h5>
+              <ul>
+                <li><a href="#faq">常见问题 FAQ</a></li>
+                <li><a href="https://tauri.app/" target="_blank" rel="noopener noreferrer">Tauri 2 官方</a></li>
+                <li><a href="https://www.rust-lang.org/" target="_blank" rel="noopener noreferrer">Rust 语言</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <div>
+            <span>© 2026 Deckify. Open source released under the MIT License.</span>
+          </div>
+          <div>
+            <span>Crafted with ❤️ for creators & developers by <a href="https://github.com/kyuuseiryuu" target="_blank" rel="noopener noreferrer" style="color:#a5b4fc;text-decoration:underline;">kyuuseiryuu</a></span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="./main.js"></script>
+  </body>
+</html>
