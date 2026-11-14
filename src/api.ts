@@ -75,11 +75,23 @@ export async function fetchUrlText(url: string): Promise<string> {
   return invoke<string>("fetch_url_text", { url });
 }
 
+export const EMOJI_ICON_PREFIX = "emoji:";
+
+export function getEmojiIcon(
+  iconPath: string | null | undefined
+): string | null {
+  if (!iconPath || !iconPath.startsWith(EMOJI_ICON_PREFIX)) {
+    return null;
+  }
+  const emoji = iconPath.slice(EMOJI_ICON_PREFIX.length).trim();
+  return emoji || null;
+}
+
 export function resolveIconUrl(
   iconPath: string | null | undefined,
   serverPort?: number
 ): string | null {
-  if (!iconPath) return null;
+  if (!iconPath || iconPath.startsWith(EMOJI_ICON_PREFIX)) return null;
   if (iconPath.startsWith("http") || iconPath.startsWith("data:")) {
     return iconPath;
   }

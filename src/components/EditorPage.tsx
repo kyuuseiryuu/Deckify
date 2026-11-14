@@ -1,37 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  Search,
   Keyboard,
   Image as ImageIcon,
   Globe,
   Terminal,
-  AppWindow,
-  Play,
-  Trash2,
-  Upload,
   CheckCircle2,
-  Plus,
   RotateCw,
   Sun,
   Moon,
-  Cpu,
-  HardDrive,
-  ArrowDownUp,
   FolderOutput,
   Volume2,
   Webhook,
   Layers,
-  RefreshCw,
   Type,
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import {
+  getEmojiIcon,
   listLocalApps,
   resolveIconUrl,
-  saveCustomImage,
-  triggerSlotAction,
 } from "../api";
+import { createSlotId } from "../constants/editor";
 import type {
   DeckSlot,
   LayoutConfig,
@@ -40,11 +30,12 @@ import type {
   SlotAction,
   SystemStats,
 } from "../types";
-import { canPlaceSpan, computeGridLayout } from "../utils/grid";
+import { computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
 import type { ThemeMode } from "../utils/theme";
-import { ActionConfigFields, isWindowsHost } from "./ActionConfigFields";
-import { MacroStepsEditor } from "./MacroStepsEditor";
+import { isWindowsHost } from "./ActionConfigFields";
+import { EditorInspector } from "./EditorInspector";
+import { EditorPalette, type TemplateKind } from "./EditorPalette";
 import { MonitorTile } from "./MonitorTile";
 
 interface EditorPageProps {
@@ -55,23 +46,6 @@ interface EditorPageProps {
   onToggleTheme: () => void;
   onBack: () => void;
   onSaveLayout: (layout: LayoutConfig) => Promise<void>;
-}
-
-const COLOR_SWATCHES = [
-  "#1e293b",
-  "#1d4ed8",
-  "#0f766e",
-  "#7c3aed",
-  "#be123c",
-  "#b45309",
-  "#374151",
-  "#0369a1",
-];
-
-function createSlotId(): string {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `slot_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export function EditorPage({
@@ -98,8 +72,6 @@ export function EditorPage({
     title: string;
     createSlot: (idx: number) => DeckSlot;
   } | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const unlisten = listen<SystemStats>("system-stats", (ev) => {
@@ -217,22 +189,7 @@ export function EditorPage({
     );
   };
 
-  const createTemplateSlot = (
-    type:
-      | "hotkey"
-      | "image"
-      | "url"
-      | "command"
-      | "cpu"
-      | "memory"
-      | "network"
-      | "switchLayout"
-      | "media"
-      | "webhook"
-      | "macro"
-      | "text",
-    targetIndex?: number
-  ) => {
+  const createTemplateSlot = (type: TemplateKind, targetIndex?: number) => {
     const idx = targetIndex ?? selectedIndex;
     setSelectedIndex(idx);
     const otherLayout =
@@ -355,30 +312,6 @@ export function EditorPage({
     commitDraft({ ...draft, slots: nextSlots });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const buf = await file.arrayBuffer();
-    const ext = file.name.split(".").pop() || "png";
-    const iconUrl = await saveCustomImage(Array.from(new Uint8Array(buf)), ext);
-    if (selectedSlot) {
-      upsertSlot(selectedIndex, {
-        ...selectedSlot,
-        icon: iconUrl,
-      });
-    } else {
-      upsertSlot(selectedIndex, {
-        id: createSlotId(),
-        index: selectedIndex,
-        label: file.name.replace(/\.[^.]+$/, ""),
-        icon: iconUrl,
-        color: "#1e293b",
-        action: { type: "image", note: "" },
-      });
-    }
-    e.target.value = "";
-  };
-
   const aspectRatio =
     draft.width > 0 && draft.height > 0 ? draft.width / draft.height : 9 / 16;
   const isLandscape = aspectRatio > 1;
@@ -489,216 +422,18 @@ export function EditorPage({
 
       <div className="editor-body">
         {/* Left Palette */}
-        <aside className="editor-sidebar">
-          <div className="palette-tabs">
-            <button
-              className={`palette-tab ${paletteTab === "apps" ? "active" : ""}`}
-              onClick={() => setPaletteTab("apps")}
-            >
-              <AppWindow size={15} />
-              <span>本地应用</span>
-            </button>
-            <button
-              className={`palette-tab ${paletteTab === "actions" ? "active" : ""}`}
-              onClick={() => setPaletteTab("actions")}
-            >
-              <Keyboard size={15} />
-              <span>快捷组件</span>
-            </button>
-          </div>
-
-          {paletteTab === "apps" ? (
-            <div className="apps-panel">
-              <div className="search-row">
-                <div className="search-box">
-                  <Search size={14} />
-                  <input
-                    value={appQuery}
-                    onChange={(e) => setAppQuery(e.target.value)}
-                    placeholder="搜索本地应用..."
-                  />
-                </div>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={refreshApps}
-                  title="刷新本地应用列表"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              </div>
-              <div className="apps-list">
-                {loadingApps ? (
-                  <div className="apps-loading">正在扫描本地应用...</div>
-                ) : filteredApps.length === 0 ? (
-                  <div className="apps-loading">未找到匹配应用</div>
-                ) : (
-                  filteredApps.map((app) => {
-                    const iconSrc = resolveIconUrl(app.icon, serverInfo?.port);
-                    return (
-                      <div
-                        key={app.path}
-                        className="app-item"
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "copy";
-                          e.dataTransfer.setData("text/plain", app.name);
-                          e.dataTransfer.setData(
-                            "application/smartdeck-app",
-                            JSON.stringify(app)
-                          );
-                        }}
-                        onClick={() => placeAppInSlot(app)}
-                        title={`点击或拖拽添加到网格: ${app.path}`}
-                      >
-                        {iconSrc ? (
-                          <img
-                            src={iconSrc}
-                            alt={app.name}
-                            className="app-item-icon"
-                            draggable={false}
-                          />
-                        ) : (
-                          <div className="app-item-icon fallback">
-                            <AppWindow size={16} />
-                          </div>
-                        )}
-                        <span className="app-item-name">{app.name}</span>
-                        <Plus size={14} className="app-item-add" />
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="actions-panel">
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("hotkey")}
-              >
-                <Keyboard size={18} />
-                <div>
-                  <div className="tpl-title">快捷键</div>
-                  <div className="tpl-desc">
-                    {isWindowsHost()
-                      ? "模拟组合键，如 Ctrl+Shift+Esc 或 Win+Shift+S"
-                      : "模拟组合键，如 Cmd+Shift+4"}
-                  </div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("text")}
-              >
-                <Type size={18} />
-                <div>
-                  <div className="tpl-title">快捷输入文本</div>
-                  <div className="tpl-desc">自动键入预设文本，支持回车</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("image")}
-              >
-                <ImageIcon size={18} />
-                <div>
-                  <div className="tpl-title">图片 / 贴纸</div>
-                  <div className="tpl-desc">上传自定义图片或标签</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("url")}
-              >
-                <Globe size={18} />
-                <div>
-                  <div className="tpl-title">打开网页</div>
-                  <div className="tpl-desc">在默认浏览器打开指定网址</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("command")}
-              >
-                <Terminal size={18} />
-                <div>
-                  <div className="tpl-title">Shell 命令</div>
-                  <div className="tpl-desc">在桌面端执行自定义终端命令</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("cpu")}
-              >
-                <Cpu size={18} />
-                <div>
-                  <div className="tpl-title">CPU 占用率</div>
-                  <div className="tpl-desc">实时显示电脑 CPU 使用率</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("memory")}
-              >
-                <HardDrive size={18} />
-                <div>
-                  <div className="tpl-title">内存占用率</div>
-                  <div className="tpl-desc">实时显示内存使用比例与容量</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("network")}
-              >
-                <ArrowDownUp size={18} />
-                <div>
-                  <div className="tpl-title">网络占用率</div>
-                  <div className="tpl-desc">实时显示上下行网络速率</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("switchLayout")}
-              >
-                <FolderOutput size={18} />
-                <div>
-                  <div className="tpl-title">跳转布局</div>
-                  <div className="tpl-desc">点击跳转到已配置的另一个布局</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("media")}
-              >
-                <Volume2 size={18} />
-                <div>
-                  <div className="tpl-title">媒体 / 音量</div>
-                  <div className="tpl-desc">播放暂停、切歌、系统音量控制</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("webhook")}
-              >
-                <Webhook size={18} />
-                <div>
-                  <div className="tpl-title">HTTP Webhook</div>
-                  <div className="tpl-desc">静默发送 GET / POST 请求</div>
-                </div>
-              </button>
-              <button
-                className="action-template-btn"
-                onClick={() => createTemplateSlot("macro")}
-              >
-                <Layers size={18} />
-                <div>
-                  <div className="tpl-title">多步宏动作</div>
-                  <div className="tpl-desc">按顺序执行多个动作与延迟</div>
-                </div>
-              </button>
-            </div>
-          )}
-        </aside>
+        <EditorPalette
+          paletteTab={paletteTab}
+          onTabChange={setPaletteTab}
+          appQuery={appQuery}
+          onAppQueryChange={setAppQuery}
+          loadingApps={loadingApps}
+          filteredApps={filteredApps}
+          serverPort={serverInfo?.port}
+          onRefreshApps={refreshApps}
+          onPlaceApp={placeAppInSlot}
+          onCreateTemplate={(kind) => createTemplateSlot(kind)}
+        />
 
         {/* Center Canvas */}
         <main className="editor-canvas-wrap">
@@ -839,7 +574,14 @@ export function EditorPage({
                           </>
                         ) : (
                           <>
-                            {iconSrc ? (
+                            {getEmojiIcon(slot.icon) ? (
+                              <span
+                                className="editor-slot-emoji"
+                                aria-label={slot.label}
+                              >
+                                {getEmojiIcon(slot.icon)}
+                              </span>
+                            ) : iconSrc ? (
                               <img
                                 src={iconSrc}
                                 alt={slot.label}
@@ -885,331 +627,16 @@ export function EditorPage({
         </main>
 
         {/* Right Inspector */}
-        <aside className="editor-inspector">
-          <h3 className="inspector-title">槽位属性 #{selectedIndex + 1}</h3>
-
-          {!selectedSlot ? (
-            <div className="inspector-empty">
-              <p>当前槽位为空</p>
-              <span>从左侧点击或拖拽应用，或快速创建一个功能按钮：</span>
-              <div className="quick-create-grid">
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => createTemplateSlot("hotkey", selectedIndex)}
-                >
-                  <Keyboard size={14} /> 快捷键
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => createTemplateSlot("image", selectedIndex)}
-                >
-                  <ImageIcon size={14} /> 图片
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => createTemplateSlot("url", selectedIndex)}
-                >
-                  <Globe size={14} /> 网页
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => createTemplateSlot("command", selectedIndex)}
-                >
-                  <Terminal size={14} /> 命令
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="inspector-form">
-              <div className="form-group">
-                <label>按钮标题</label>
-                <input
-                  value={selectedSlot.label}
-                  onChange={(e) =>
-                    upsertSlot(selectedIndex, {
-                      ...selectedSlot,
-                      label: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>字体大小 ({selectedSlot.fontSize ?? 12}px)</label>
-                <input
-                  type="range"
-                  min={10}
-                  max={28}
-                  value={selectedSlot.fontSize ?? 12}
-                  onChange={(e) =>
-                    upsertSlot(selectedIndex, {
-                      ...selectedSlot,
-                      fontSize: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>背景颜色</label>
-                <div className="color-row">
-                  {COLOR_SWATCHES.map((c) => (
-                    <button
-                      key={c}
-                      className={`color-swatch ${
-                        selectedSlot.color === c ? "active" : ""
-                      }`}
-                      style={{ backgroundColor: c }}
-                      onClick={() =>
-                        upsertSlot(selectedIndex, { ...selectedSlot, color: c })
-                      }
-                    />
-                  ))}
-                  <input
-                    type="color"
-                    value={selectedSlot.color || "#1e293b"}
-                    onChange={(e) =>
-                      upsertSlot(selectedIndex, {
-                        ...selectedSlot,
-                        color: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>跨区合并（列 × 行）</label>
-                <div className="span-controls">
-                  <div className="span-stepper">
-                    <span>跨列</span>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      disabled={(selectedSlot.colSpan ?? 1) <= 1}
-                      onClick={() =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          colSpan: Math.max(1, (selectedSlot.colSpan ?? 1) - 1),
-                        })
-                      }
-                    >
-                      -
-                    </button>
-                    <span>{selectedSlot.colSpan ?? 1}</span>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      disabled={
-                        !canPlaceSpan(
-                          draft.cols,
-                          draft.rows,
-                          draft.slots,
-                          selectedIndex,
-                          (selectedSlot.colSpan ?? 1) + 1,
-                          selectedSlot.rowSpan ?? 1,
-                          selectedSlot.id
-                        )
-                      }
-                      onClick={() =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          colSpan: (selectedSlot.colSpan ?? 1) + 1,
-                        })
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="span-stepper">
-                    <span>跨行</span>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      disabled={(selectedSlot.rowSpan ?? 1) <= 1}
-                      onClick={() =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          rowSpan: Math.max(1, (selectedSlot.rowSpan ?? 1) - 1),
-                        })
-                      }
-                    >
-                      -
-                    </button>
-                    <span>{selectedSlot.rowSpan ?? 1}</span>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      disabled={
-                        !canPlaceSpan(
-                          draft.cols,
-                          draft.rows,
-                          draft.slots,
-                          selectedIndex,
-                          selectedSlot.colSpan ?? 1,
-                          (selectedSlot.rowSpan ?? 1) + 1,
-                          selectedSlot.id
-                        )
-                      }
-                      onClick={() =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          rowSpan: (selectedSlot.rowSpan ?? 1) + 1,
-                        })
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>图标 / 自定义图片</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={handleImageUpload}
-                />
-                <div className="icon-upload-row">
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload size={14} />
-                    <span>上传图片</span>
-                  </button>
-                  {selectedSlot.icon && (
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          icon: null,
-                        })
-                      }
-                    >
-                      移除图标
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <ActionConfigFields
-                action={selectedSlot.action}
-                localApps={apps}
-                onChange={(nextAction, suggestedLabel) =>
-                  upsertSlot(selectedIndex, {
-                    ...selectedSlot,
-                    label: suggestedLabel ?? selectedSlot.label,
-                    action: nextAction,
-                  })
-                }
-              />
-
-              {selectedSlot.action.type === "image" && (
-                <>
-                  <div className="form-group">
-                    <label>网络图片 URL（可选，支持动态图）</label>
-                    <input
-                      placeholder="https://example.com/image.png"
-                      value={selectedSlot.icon ?? ""}
-                      onChange={(e) =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          icon: e.target.value || null,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>网络图片刷新频率</label>
-                    <select
-                      className="select-input"
-                      value={selectedSlot.action.refreshInterval ?? 0}
-                      onChange={(e) =>
-                        upsertSlot(selectedIndex, {
-                          ...selectedSlot,
-                          action: {
-                            type: "image",
-                            note:
-                              selectedSlot.action.type === "image"
-                                ? selectedSlot.action.note
-                                : "",
-                            refreshInterval: Number(e.target.value) || 0,
-                          },
-                        })
-                      }
-                    >
-                      <option value={0}>不自动刷新</option>
-                      <option value={5}>每 5 秒</option>
-                      <option value={10}>每 10 秒</option>
-                      <option value={15}>每 15 秒</option>
-                      <option value={30}>每 30 秒</option>
-                      <option value={60}>每 60 秒</option>
-                      <option value={120}>每 120 秒</option>
-                    </select>
-                  </div>
-                </>
-              )}
-
-              {selectedSlot.action.type === "switchLayout" && (
-                <div className="form-group">
-                  <label>目标布局配置</label>
-                  <select
-                    className="select-input"
-                    value={selectedSlot.action.layoutId}
-                    onChange={(e) => {
-                      const targetId = e.target.value;
-                      const target = allLayouts.find((l) => l.id === targetId);
-                      upsertSlot(selectedIndex, {
-                        ...selectedSlot,
-                        label: target ? target.name : selectedSlot.label,
-                        action: { type: "switchLayout", layoutId: targetId },
-                      });
-                    }}
-                  >
-                    <option value="">请选择要跳转的布局...</option>
-                    {allLayouts.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name} ({l.cols}×{l.rows})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {selectedSlot.action.type === "macro" && (
-                <MacroStepsEditor
-                  steps={selectedSlot.action.steps}
-                  localApps={apps}
-                  onChange={(nextSteps) =>
-                    upsertSlot(selectedIndex, {
-                      ...selectedSlot,
-                      action: { type: "macro", steps: nextSteps },
-                    })
-                  }
-                />
-              )}
-
-              <div className="inspector-actions">
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => triggerSlotAction(selectedSlot.action)}
-                >
-                  <Play size={14} />
-                  <span>测试触发</span>
-                </button>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => clearSlot(selectedIndex)}
-                >
-                  <Trash2 size={14} />
-                  <span>清空</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </aside>
+        <EditorInspector
+          selectedIndex={selectedIndex}
+          selectedSlot={selectedSlot}
+          draft={draft}
+          allLayouts={allLayouts}
+          apps={apps}
+          onCreateTemplate={createTemplateSlot}
+          onUpsertSlot={upsertSlot}
+          onClearSlot={clearSlot}
+        />
       </div>
 
       {pendingInsert && (

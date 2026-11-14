@@ -17,6 +17,7 @@ import {
   Layers,
   Type,
 } from "lucide-react";
+import { getEmojiIcon } from "../api";
 import type { DeckSlot, LayoutConfig, SystemStats, WsServerMsg } from "../types";
 import { computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
@@ -467,13 +468,12 @@ export function DeckPage() {
             const flash = flashMap[slot.id];
             const isImageTile = slot.action.type === "image";
             const isMonitorTile = slot.action.type === "monitor";
+            const emojiIcon = getEmojiIcon(slot.icon);
             const refreshInterval =
               slot.action.type === "image" ? slot.action.refreshInterval : 0;
-            const imgSrc = withRefreshTick(
-              slot.icon ?? null,
-              refreshInterval,
-              nowSec
-            );
+            const imgSrc = emojiIcon
+              ? null
+              : withRefreshTick(slot.icon ?? null, refreshInterval, nowSec);
             return (
               <button
                 key={slot.id}
@@ -516,7 +516,14 @@ export function DeckPage() {
                   </>
                 ) : (
                   <>
-                    {imgSrc ? (
+                    {emojiIcon ? (
+                      <span
+                        className="deck-slot-emoji"
+                        aria-label={slot.label}
+                      >
+                        {emojiIcon}
+                      </span>
+                    ) : imgSrc ? (
                       <img
                         src={imgSrc}
                         alt={slot.label}
