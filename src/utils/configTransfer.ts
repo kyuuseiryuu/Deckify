@@ -29,7 +29,7 @@ export function downloadJsonFile(filename: string, content: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function sanitizeFilename(name: string): string {

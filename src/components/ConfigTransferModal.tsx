@@ -43,6 +43,7 @@ export function ConfigTransferModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const exportedJson = useMemo(
@@ -77,6 +78,8 @@ export function ConfigTransferModal({
 
   const handleDownloadExport = () => {
     downloadJsonFile(exportFilename, exportedJson);
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 2600);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,6 +159,15 @@ export function ConfigTransferModal({
             spellCheck={false}
           />
 
+          {downloaded && (
+            <div className="config-success-box">
+              <Check size={15} />
+              <span>
+                已下载配置文件：<code>{exportFilename}</code>
+              </span>
+            </div>
+          )}
+
           <div className="modal-actions">
             <button
               type="button"
@@ -177,8 +189,8 @@ export function ConfigTransferModal({
               className="btn btn-primary btn-sm"
               onClick={handleDownloadExport}
             >
-              <Download size={14} />
-              <span>下载 JSON 文件</span>
+              {downloaded ? <Check size={14} /> : <Download size={14} />}
+              <span>{downloaded ? "已下载" : "下载 JSON 文件"}</span>
             </button>
           </div>
         </div>
