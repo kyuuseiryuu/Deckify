@@ -14,6 +14,10 @@ export function KeepAwakeControl({
   const [isCharging, setIsCharging] = useState(false);
   const [batterySupported, setBatterySupported] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const isHttpsMode =
+    typeof window !== "undefined" &&
+    window.isSecureContext &&
+    window.location.protocol === "https:";
 
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -22,6 +26,7 @@ export function KeepAwakeControl({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscRef = useRef<OscillatorNode | null>(null);
   const keepAwakeRef = useRef(false);
+  const userToggledOffRef = useRef(false);
   keepAwakeRef.current = keepAwake;
 
   const requestWakeLock = async () => {
@@ -157,10 +162,20 @@ export function KeepAwakeControl({
             onChargingChange?.(bat.charging);
             if (!bat.charging && keepAwakeRef.current) {
               stopMediaKeepAwake();
+              wakeLockRef.current?.release();
+              wakeLockRef.current = null;
               setKeepAwake(false);
               onToast?.("检测到已断开充电，已自动关闭屏幕常亮");
+            } else if (
+              isHttpsMode &&
+              bat.charging &&
+              !keepAwakeRef.current &&
+              !userToggledOffRef.current
+            ) {
+              requestWakeLock();
+              setKeepAwake(true);
             }
-            if (bat.charging || document.visibilityState === "visible") {
+            if (bat.charging && keepAwakeRef.current && document.visibilityState === "visible") {
               requestWakeLock();
             }
           };
@@ -188,13 +203,33 @@ export function KeepAwakeControl({
     };
   }, []);
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
     if (keepAwake) {
+      userToggledOffRef.current = true;
       stopMediaKeepAwake();
+      wakeLockRef.current?.release();
+      wakeLockRef.current = null;
       setKeepAwake(false);
       onToast?.("已关闭屏幕常亮");
       return;
     }
+
+    if (isHttpsMode) {
+      if (!isCharging) {
+        onToast?.(
+          batterySupported
+            ? "当前未在充电中，仅支持充电时开启屏幕常亮"
+            : "当前浏览器无法确认充电状态，暂不支持开启屏幕常亮"
+        );
+        return;
+      }
+      userToggledOffRef.current = false;
+      await requestWakeLock();
+      setKeepAwake(true);
+      onToast?.("已开启原生屏幕常亮（WakeLock）");
+      return;
+    }
+
     setShowModal(true);
   };
 
@@ -212,7 +247,13 @@ export function KeepAwakeControl({
       <button
         className={`icon-btn ${keepAwake ? "active" : ""}`}
         onClick={handleToggle}
-        title={keepAwake ? "关闭屏幕常亮" : "开启屏幕常亮（视频防休眠）"}
+        title={
+          keepAwake
+            ? "关闭屏幕常亮"
+            : isHttpsMode
+              ? "开启原生屏幕常亮（仅充电时可用）"
+              : "开启屏幕常亮（视频防休眠）"
+        }
       >
         <Lightbulb size={15} />
       </button>

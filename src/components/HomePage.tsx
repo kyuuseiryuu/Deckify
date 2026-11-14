@@ -298,6 +298,7 @@ export function HomePage({
                       <Lock size={15} />
                     )}
                     <span>本地 HTTPS (SSL)</span>
+                    <span className="https-recommend-badge">推荐开启</span>
                   </div>
                   <button
                     type="button"
@@ -329,11 +330,15 @@ export function HomePage({
                   </button>
                 </div>
 
+                <p className="https-hint">
+                  <strong>为什么推荐开启：</strong>可加密局域网通信，并解锁浏览器原生 <strong>WakeLock 屏幕常亮</strong>（充电时自动生效，无需视频保活）与完整 <strong>PWA 主屏幕应用</strong>体验。
+                </p>
+
                 {httpsError && (
                   <p className="pairing-error-text">{httpsError}</p>
                 )}
 
-                {serverInfo.httpsEnabled && serverInfo.caCertUrl ? (
+                {serverInfo.httpsEnabled && serverInfo.caCertUrl && (
                   <div className="https-ca-panel">
                     <div className="https-ca-qr">
                       <QRCodeSVG
@@ -358,10 +363,6 @@ export function HomePage({
                       </p>
                     </div>
                   </div>
-                ) : (
-                  <p className="https-hint">
-                    开启后将自动生成本地根证书并启用 HTTPS / WSS，可解锁浏览器原生 WakeLock 常亮与完整 PWA 体验。
-                  </p>
                 )}
               </div>
             </>
