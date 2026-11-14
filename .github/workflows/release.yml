@@ -41,10 +41,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Universal macOS .app and .dmg
-        run: npm run tauri build -- --target universal-apple-darwin --bundles app,dmg
+      - name: Build Universal macOS .app
+        run: npm run tauri build -- --target universal-apple-darwin --bundles app
 
-      - name: Prepare release artifacts
+      - name: Sign .app and prepare release artifacts
         id: artifacts
         shell: bash
         run: |
@@ -53,19 +53,29 @@ jobs:
           mkdir -p "$OUT_DIR"
 
           APP_PATH=$(find "$BUNDLE_DIR/macos" -maxdepth 1 -name "*.app" | head -n 1)
-          DMG_PATH=$(find "$BUNDLE_DIR/dmg" -maxdepth 1 -name "*.dmg" | head -n 1)
 
-          if [[ -z "$APP_PATH" || -z "$DMG_PATH" ]]; then
-            echo "Missing .app or .dmg artifact"
-            ls -la "$BUNDLE_DIR/macos" "$BUNDLE_DIR/dmg" || true
+          if [[ -z "$APP_PATH" ]]; then
+            echo "Missing .app artifact"
+            ls -la "$BUNDLE_DIR/macos" || true
             exit 1
           fi
+
+          # Ad-hoc sign the entire .app bundle so Info.plist is bound to com.deckify.desktop
+          # (required for macOS TCC Accessibility permission matching).
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign -dv --verbose=2 "$APP_PATH" 2>&1
 
           APP_NAME=$(basename "$APP_PATH" .app)
           VERSION=$(node -p "require('./package.json').version")
 
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$OUT_DIR/${APP_NAME}_${VERSION}_universal.app.zip"
-          cp "$DMG_PATH" "$OUT_DIR/${APP_NAME}_${VERSION}_universal.dmg"
+
+          DMG_STAGING=$(mktemp -d)
+          cp -R "$APP_PATH" "$DMG_STAGING/"
+          ln -s /Applications "$DMG_STAGING/Applications"
+          hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGING" -ov -format UDZO "$OUT_DIR/${APP_NAME}_${VERSION}_universal.dmg"
+          rm -rf "$DMG_STAGING"
 
           ls -lh "$OUT_DIR"
 
