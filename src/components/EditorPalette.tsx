@@ -1,10 +1,8 @@
 import {
+  Activity,
   AppWindow,
-  ArrowDownUp,
-  Cpu,
   FolderOutput,
   Globe,
-  HardDrive,
   Image as ImageIcon,
   Keyboard,
   Layers,
@@ -27,9 +25,7 @@ export type TemplateKind =
   | "image"
   | "url"
   | "command"
-  | "cpu"
-  | "memory"
-  | "network"
+  | "monitor"
   | "switchLayout"
   | "media"
   | "audioOutput"
@@ -201,32 +197,12 @@ export function EditorPalette({
           </button>
           <button
             className="action-template-btn"
-            onClick={() => onCreateTemplate("cpu")}
+            onClick={() => onCreateTemplate("monitor")}
           >
-            <Cpu size={18} />
+            <Activity size={18} />
             <div>
-              <div className="tpl-title">CPU 占用率</div>
-              <div className="tpl-desc">实时显示电脑 CPU 使用率</div>
-            </div>
-          </button>
-          <button
-            className="action-template-btn"
-            onClick={() => onCreateTemplate("memory")}
-          >
-            <HardDrive size={18} />
-            <div>
-              <div className="tpl-title">内存占用率</div>
-              <div className="tpl-desc">实时显示内存使用比例与容量</div>
-            </div>
-          </button>
-          <button
-            className="action-template-btn"
-            onClick={() => onCreateTemplate("network")}
-          >
-            <ArrowDownUp size={18} />
-            <div>
-              <div className="tpl-title">网络占用率</div>
-              <div className="tpl-desc">实时显示上下行网络速率</div>
+              <div className="tpl-title">系统状态</div>
+              <div className="tpl-desc">实时显示 CPU、内存或网络速率</div>
             </div>
           </button>
           <button

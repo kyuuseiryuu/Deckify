@@ -8,12 +8,14 @@ import { isValidSingleEmoji } from "../utils/emoji";
 interface SlotIconPickerProps {
   selectedIndex: number;
   icon: string | null | undefined;
+  allowEmoji?: boolean;
   onChangeIcon: (nextIcon: string | null) => void;
 }
 
 export function SlotIconPicker({
   selectedIndex,
   icon,
+  allowEmoji = true,
   onChangeIcon,
 }: SlotIconPickerProps) {
   const [iconUrlInput, setIconUrlInput] = useState("");
@@ -47,7 +49,10 @@ export function SlotIconPicker({
     }
     setIconUrlError(null);
     setEmojiError(null);
-  }, [selectedIndex, icon]);
+    if (!allowEmoji) {
+      setShowEmojiPanel(false);
+    }
+  }, [selectedIndex, icon, allowEmoji]);
 
   const updateCoords = useCallback(() => {
     if (!emojiTriggerRef.current) return;
@@ -164,7 +169,7 @@ export function SlotIconPicker({
 
   return (
     <div className="form-group">
-      <label>槽位图标 / Emoji</label>
+      <label>{allowEmoji ? "槽位图标 / Emoji" : "槽位图片"}</label>
       <input
         ref={fileInputRef}
         type="file"
@@ -183,27 +188,29 @@ export function SlotIconPicker({
           <span>上传图片</span>
         </button>
 
-        <button
-          ref={emojiTriggerRef}
-          type="button"
-          className={`btn btn-secondary btn-sm emoji-trigger-btn ${currentEmoji ? "has-emoji" : ""}`}
-          onClick={() => setShowEmojiPanel((prev) => !prev)}
-          title="点击打开 Emoji 选择面板"
-        >
-          {currentEmoji ? (
-            <span className="emoji-trigger-preview">{currentEmoji}</span>
-          ) : (
-            <Smile size={14} />
-          )}
-          <span>{currentEmoji ? "更换 Emoji" : "选择 Emoji"}</span>
-        </button>
+        {allowEmoji && (
+          <button
+            ref={emojiTriggerRef}
+            type="button"
+            className={`btn btn-secondary btn-sm emoji-trigger-btn ${currentEmoji ? "has-emoji" : ""}`}
+            onClick={() => setShowEmojiPanel((prev) => !prev)}
+            title="点击打开 Emoji 选择面板"
+          >
+            {currentEmoji ? (
+              <span className="emoji-trigger-preview">{currentEmoji}</span>
+            ) : (
+              <Smile size={14} />
+            )}
+            <span>{currentEmoji ? "更换 Emoji" : "选择 Emoji"}</span>
+          </button>
+        )}
 
         {icon && (
           <button
             type="button"
             className="btn btn-secondary btn-sm btn-icon-only"
             onClick={() => onChangeIcon(null)}
-            title="移除当前图标或 Emoji"
+            title={allowEmoji ? "移除当前图标或 Emoji" : "移除当前图片"}
           >
             <Trash2 size={13} />
           </button>
@@ -237,7 +244,8 @@ export function SlotIconPicker({
       </div>
       {iconUrlError && <p className="icon-url-error">{iconUrlError}</p>}
 
-      {showEmojiPanel &&
+      {allowEmoji &&
+        showEmojiPanel &&
         panelCoords &&
         createPortal(
           <div

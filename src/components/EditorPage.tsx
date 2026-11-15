@@ -231,20 +231,10 @@ export function EditorPage({
         color: "#7c3aed",
         action: { type: "command", command: "echo hello" },
       },
-      cpu: {
+      monitor: {
         label: "CPU",
         color: "#1e293b",
         action: { type: "monitor", metric: "cpu" },
-      },
-      memory: {
-        label: "内存",
-        color: "#1e293b",
-        action: { type: "monitor", metric: "memory" },
-      },
-      network: {
-        label: "网络",
-        color: "#1e293b",
-        action: { type: "monitor", metric: "network" },
       },
       switchLayout: {
         label: otherLayout ? otherLayout.name : "切换布局",

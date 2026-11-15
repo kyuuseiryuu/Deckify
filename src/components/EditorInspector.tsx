@@ -216,27 +216,40 @@ export function EditorInspector({
             </div>
           </div>
 
-          <SlotIconPicker
-            selectedIndex={selectedIndex}
-            icon={selectedSlot.icon}
-            onChangeIcon={(nextIcon) =>
-              onUpsertSlot(selectedIndex, {
-                ...selectedSlot,
-                icon: nextIcon,
-              })
-            }
-          />
+          {selectedSlot.action.type !== "monitor" && (
+            <SlotIconPicker
+              selectedIndex={selectedIndex}
+              icon={selectedSlot.icon}
+              allowEmoji={selectedSlot.action.type !== "image"}
+              onChangeIcon={(nextIcon) =>
+                onUpsertSlot(selectedIndex, {
+                  ...selectedSlot,
+                  icon: nextIcon,
+                })
+              }
+            />
+          )}
 
           <ActionConfigFields
             action={selectedSlot.action}
             localApps={apps}
-            onChange={(nextAction, suggestedLabel) =>
+            onChange={(nextAction, suggestedLabel) => {
+              const isDefaultMonitorLabel =
+                selectedSlot.action.type === "monitor" &&
+                (!selectedSlot.label.trim() ||
+                  ["CPU", "内存", "网络"].includes(selectedSlot.label.trim()));
+              const nextLabel =
+                selectedSlot.action.type === "monitor"
+                  ? isDefaultMonitorLabel && suggestedLabel
+                    ? suggestedLabel
+                    : selectedSlot.label
+                  : suggestedLabel ?? selectedSlot.label;
               onUpsertSlot(selectedIndex, {
                 ...selectedSlot,
-                label: suggestedLabel ?? selectedSlot.label,
+                label: nextLabel,
                 action: nextAction,
-              })
-            }
+              });
+            }}
           />
 
           {selectedSlot.action.type === "image" && (
@@ -322,13 +335,15 @@ export function EditorInspector({
           )}
 
           <div className="inspector-actions">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => triggerSlotAction(selectedSlot.action)}
-            >
-              <Play size={14} />
-              <span>测试触发</span>
-            </button>
+            {selectedSlot.action.type !== "monitor" && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => triggerSlotAction(selectedSlot.action)}
+              >
+                <Play size={14} />
+                <span>测试触发</span>
+              </button>
+            )}
             <button
               className="btn btn-danger btn-sm"
               onClick={() => onClearSlot(selectedIndex)}

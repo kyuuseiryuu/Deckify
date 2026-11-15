@@ -9,6 +9,9 @@ import {
   Volume1,
   Volume2,
   VolumeX,
+  Cpu,
+  HardDrive,
+  ArrowDownUp,
 } from "lucide-react";
 import { listAudioDevices } from "../api";
 import type { AudioDeviceInfo, AudioOutputMode, LocalAppInfo, SlotAction } from "../types";
@@ -110,6 +113,14 @@ export function summarizeAction(action: SlotAction): string {
       return action.url || "打开网址";
     case "command":
       return action.command.trim() || "Shell 命令";
+    case "monitor": {
+      const metricLabels = {
+        cpu: "CPU",
+        memory: "内存",
+        network: "网络",
+      } as const;
+      return `系统状态: ${metricLabels[action.metric] ?? action.metric}`;
+    }
     case "audioOutput": {
       switch (action.mode) {
         case "direct":
@@ -528,6 +539,31 @@ export function ActionConfigFields({
             onChange({ type: "command", command: e.target.value })
           }
           placeholder="输入终端命令，如: calc 或 notepad"
+        />
+      </div>
+    );
+  }
+
+  if (action.type === "monitor") {
+    const metricDefaultLabels: Record<"cpu" | "memory" | "network", string> = {
+      cpu: "CPU",
+      memory: "内存",
+      network: "网络",
+    };
+    return (
+      <div className="form-group">
+        {!compact && <label>监控指标</label>}
+        <CustomSelect
+          value={action.metric}
+          options={[
+            { value: "cpu", label: "CPU 占用率", icon: <Cpu size={14} /> },
+            { value: "memory", label: "内存占用率", icon: <HardDrive size={14} /> },
+            { value: "network", label: "网络速率", icon: <ArrowDownUp size={14} /> },
+          ]}
+          onChange={(val) => {
+            const metric = val as "cpu" | "memory" | "network";
+            onChange({ type: "monitor", metric }, metricDefaultLabels[metric]);
+          }}
         />
       </div>
     );
