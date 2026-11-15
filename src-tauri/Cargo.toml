@@ -1,6 +1,6 @@
 [package]
 name = "landeck"
-version = "1.4.0"
+version = "1.4.1"
 description = "Turn mobile devices into a customizable LanDeck controller"
 authors = ["LanDeck"]
 edition = "2021"

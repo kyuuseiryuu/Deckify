@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.4.1 (2026-11-15)
+
+### 🐛 修复与优化 (Fixes & CI)
+- **macOS CoreAudio 环境鲁棒性增强**：
+  - 完善 CoreAudio 在无头环境（如 macOS CI Runner、云端无声卡虚拟机）下的容错处理，将 `kAudioHardwareNotRunningError`（OSStatus 1852797029）优雅降级为空设备列表，避免硬崩溃。
+  - 增强音频设备单元测试在 CI/CD 无头测试环境下的健壮性。
+- **GitHub Actions 工作流升级**：
+  - 全面升级 `actions/checkout`、`actions/setup-node`、`actions/upload-artifact` 至最新的 `@v7`，适配 Node.js 24 运行环境并彻底消除 Node.js 20 弃用警告。
+  - 构建运行环境平滑升级至 Node.js 22 LTS。
+
+---
+
 ## v1.4.0 (2026-11-15)
 
 ### ✨ 新特性 (Features)
