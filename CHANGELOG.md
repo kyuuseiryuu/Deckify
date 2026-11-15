@@ -5,6 +5,7 @@
 ### ✨ 新特性 (Features)
 - **音源控制组件（SlotAction::AudioOutput）**：
   - Windows 原生 WASAPI 端点快速枚举与毫秒级无感知切换（`IPolicyConfig::SetDefaultEndpoint`，支持媒体/通信多角色）。
+  - macOS 原生 CoreAudio 深度适配（基于 `CoreAudio.framework` C FFI 实现输出设备枚举与默认端点无感知切换，零外部第三方依赖）。
   - 支持四种交互模式：混合模式（单击快速轮换，长按 400ms 弹出完整音源浮层）、浮层选择、循环切换、固定指定设备。
   - 支持设备白名单过滤（留空默认轮换所有可用设备）与智能设备图标识别（耳机、扬声器、电视/显示器）。
   - 移动端音源选择浮层（Bottom Sheet Modal）与全双工 WebSocket 音频设备状态实时双向同步。

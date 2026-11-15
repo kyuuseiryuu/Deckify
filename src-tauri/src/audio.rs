@@ -172,12 +172,345 @@ mod windows_audio {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod macos_audio {
+    use super::AudioDeviceInfo;
+    use std::ffi::c_void;
+    use std::ptr;
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug)]
+    pub struct AudioObjectPropertyAddress {
+        pub m_selector: u32,
+        pub m_scope: u32,
+        pub m_element: u32,
+    }
+
+    const K_AUDIO_HARDWARE_PROPERTY_DEVICES: u32 = u32::from_be_bytes(*b"dev#");
+    const K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE: u32 = u32::from_be_bytes(*b"dOut");
+    const K_AUDIO_DEVICE_PROPERTY_DEVICE_NAME_CF_STRING: u32 = u32::from_be_bytes(*b"lnam");
+    const K_AUDIO_DEVICE_PROPERTY_DEVICE_UID: u32 = u32::from_be_bytes(*b"uid ");
+    const K_AUDIO_DEVICE_PROPERTY_STREAMS: u32 = u32::from_be_bytes(*b"stm#");
+
+    const K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL: u32 = u32::from_be_bytes(*b"glob");
+    const K_AUDIO_DEVICE_PROPERTY_SCOPE_OUTPUT: u32 = u32::from_be_bytes(*b"outp");
+    const K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN: u32 = 0;
+
+    const K_AUDIO_OBJECT_SYSTEM_OBJECT: u32 = 1;
+    const NO_ERR: i32 = 0;
+    const K_CF_STRING_ENCODING_UTF8: u32 = 0x08000100;
+
+    #[link(name = "CoreAudio", kind = "framework")]
+    extern "C" {
+        fn AudioObjectGetPropertyData(
+            inObjectID: u32,
+            inAddress: *const AudioObjectPropertyAddress,
+            inQualifierDataSize: u32,
+            inQualifierData: *const c_void,
+            ioDataSize: *mut u32,
+            outData: *mut c_void,
+        ) -> i32;
+
+        fn AudioObjectSetPropertyData(
+            inObjectID: u32,
+            inAddress: *const AudioObjectPropertyAddress,
+            inQualifierDataSize: u32,
+            inQualifierData: *const c_void,
+            inDataSize: u32,
+            inData: *const c_void,
+        ) -> i32;
+    }
+
+    #[link(name = "CoreFoundation", kind = "framework")]
+    extern "C" {
+        fn CFStringGetLength(theString: *const c_void) -> isize;
+        fn CFStringGetCString(
+            theString: *const c_void,
+            buffer: *mut u8,
+            bufferSize: isize,
+            encoding: u32,
+        ) -> bool;
+        fn CFRelease(cf: *const c_void);
+    }
+
+    unsafe fn cfstring_to_string(cf_str: *const c_void) -> Option<String> {
+        if cf_str.is_null() {
+            return None;
+        }
+        let length = CFStringGetLength(cf_str);
+        if length <= 0 {
+            CFRelease(cf_str);
+            return Some(String::new());
+        }
+        let max_size = length * 4 + 1;
+        let mut buf = vec![0u8; max_size as usize];
+        let success = CFStringGetCString(
+            cf_str,
+            buf.as_mut_ptr(),
+            max_size,
+            K_CF_STRING_ENCODING_UTF8,
+        );
+        CFRelease(cf_str);
+        if success {
+            if let Some(pos) = buf.iter().position(|&b| b == 0) {
+                buf.truncate(pos);
+            }
+            String::from_utf8(buf).ok()
+        } else {
+            None
+        }
+    }
+
+    pub fn list_devices() -> Result<Vec<AudioDeviceInfo>, String> {
+        let mut default_dev_id: u32 = 0;
+        let mut size = std::mem::size_of::<u32>() as u32;
+        let addr_default = AudioObjectPropertyAddress {
+            m_selector: K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE,
+            m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+
+        unsafe {
+            let _ = AudioObjectGetPropertyData(
+                K_AUDIO_OBJECT_SYSTEM_OBJECT,
+                &addr_default,
+                0,
+                ptr::null(),
+                &mut size,
+                &mut default_dev_id as *mut u32 as *mut c_void,
+            );
+        }
+
+        let addr_devices = AudioObjectPropertyAddress {
+            m_selector: K_AUDIO_HARDWARE_PROPERTY_DEVICES,
+            m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+
+        let mut data_size: u32 = 0;
+        let status = unsafe {
+            AudioObjectGetPropertyData(
+                K_AUDIO_OBJECT_SYSTEM_OBJECT,
+                &addr_devices,
+                0,
+                ptr::null(),
+                &mut data_size,
+                ptr::null_mut(),
+            )
+        };
+        if status != NO_ERR {
+            return Err(format!("获取 CoreAudio 设备列表大小失败: OSStatus {}", status));
+        }
+
+        let count = data_size as usize / std::mem::size_of::<u32>();
+        let mut device_ids = vec![0u32; count];
+        let status = unsafe {
+            AudioObjectGetPropertyData(
+                K_AUDIO_OBJECT_SYSTEM_OBJECT,
+                &addr_devices,
+                0,
+                ptr::null(),
+                &mut data_size,
+                device_ids.as_mut_ptr() as *mut c_void,
+            )
+        };
+        if status != NO_ERR {
+            return Err(format!("获取 CoreAudio 设备列表失败: OSStatus {}", status));
+        }
+
+        let mut results = Vec::new();
+        for dev_id in device_ids {
+            // Check if device has output streams
+            let addr_streams = AudioObjectPropertyAddress {
+                m_selector: K_AUDIO_DEVICE_PROPERTY_STREAMS,
+                m_scope: K_AUDIO_DEVICE_PROPERTY_SCOPE_OUTPUT,
+                m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+            };
+            let mut stream_size: u32 = 0;
+            let status = unsafe {
+                AudioObjectGetPropertyData(
+                    dev_id,
+                    &addr_streams,
+                    0,
+                    ptr::null(),
+                    &mut stream_size,
+                    ptr::null_mut(),
+                )
+            };
+            if status != NO_ERR || stream_size == 0 {
+                continue;
+            }
+
+            // Get UID
+            let addr_uid = AudioObjectPropertyAddress {
+                m_selector: K_AUDIO_DEVICE_PROPERTY_DEVICE_UID,
+                m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+                m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+            };
+            let mut cf_uid: *const c_void = ptr::null();
+            let mut uid_size = std::mem::size_of::<*const c_void>() as u32;
+            let status = unsafe {
+                AudioObjectGetPropertyData(
+                    dev_id,
+                    &addr_uid,
+                    0,
+                    ptr::null(),
+                    &mut uid_size,
+                    &mut cf_uid as *mut *const c_void as *mut c_void,
+                )
+            };
+            let uid = if status == NO_ERR && !cf_uid.is_null() {
+                unsafe { cfstring_to_string(cf_uid) }.unwrap_or_else(|| dev_id.to_string())
+            } else {
+                dev_id.to_string()
+            };
+
+            // Get device name
+            let addr_name = AudioObjectPropertyAddress {
+                m_selector: K_AUDIO_DEVICE_PROPERTY_DEVICE_NAME_CF_STRING,
+                m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+                m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+            };
+            let mut cf_name: *const c_void = ptr::null();
+            let mut name_size = std::mem::size_of::<*const c_void>() as u32;
+            let status = unsafe {
+                AudioObjectGetPropertyData(
+                    dev_id,
+                    &addr_name,
+                    0,
+                    ptr::null(),
+                    &mut name_size,
+                    &mut cf_name as *mut *const c_void as *mut c_void,
+                )
+            };
+            let name = if status == NO_ERR && !cf_name.is_null() {
+                unsafe { cfstring_to_string(cf_name) }.unwrap_or_else(|| format!("音频输出设备 ({})", dev_id))
+            } else {
+                format!("音频输出设备 ({})", dev_id)
+            };
+
+            let is_default = dev_id == default_dev_id;
+            results.push(AudioDeviceInfo {
+                id: uid,
+                name,
+                is_default,
+            });
+        }
+
+        Ok(results)
+    }
+
+    pub fn set_default(target_id: &str) -> Result<(), String> {
+        let addr_devices = AudioObjectPropertyAddress {
+            m_selector: K_AUDIO_HARDWARE_PROPERTY_DEVICES,
+            m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+
+        let mut data_size: u32 = 0;
+        let status = unsafe {
+            AudioObjectGetPropertyData(
+                K_AUDIO_OBJECT_SYSTEM_OBJECT,
+                &addr_devices,
+                0,
+                ptr::null(),
+                &mut data_size,
+                ptr::null_mut(),
+            )
+        };
+        if status != NO_ERR {
+            return Err(format!("获取 CoreAudio 设备列表大小失败: OSStatus {}", status));
+        }
+
+        let count = data_size as usize / std::mem::size_of::<u32>();
+        let mut device_ids = vec![0u32; count];
+        let status = unsafe {
+            AudioObjectGetPropertyData(
+                K_AUDIO_OBJECT_SYSTEM_OBJECT,
+                &addr_devices,
+                0,
+                ptr::null(),
+                &mut data_size,
+                device_ids.as_mut_ptr() as *mut c_void,
+            )
+        };
+        if status != NO_ERR {
+            return Err(format!("获取 CoreAudio 设备列表失败: OSStatus {}", status));
+        }
+
+        let mut matched_device_id: Option<u32> = None;
+
+        for dev_id in device_ids {
+            let addr_uid = AudioObjectPropertyAddress {
+                m_selector: K_AUDIO_DEVICE_PROPERTY_DEVICE_UID,
+                m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+                m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+            };
+            let mut cf_uid: *const c_void = ptr::null();
+            let mut uid_size = std::mem::size_of::<*const c_void>() as u32;
+            let status = unsafe {
+                AudioObjectGetPropertyData(
+                    dev_id,
+                    &addr_uid,
+                    0,
+                    ptr::null(),
+                    &mut uid_size,
+                    &mut cf_uid as *mut *const c_void as *mut c_void,
+                )
+            };
+            if status == NO_ERR && !cf_uid.is_null() {
+                if let Some(uid) = unsafe { cfstring_to_string(cf_uid) } {
+                    if uid == target_id {
+                        matched_device_id = Some(dev_id);
+                        break;
+                    }
+                }
+            }
+            if dev_id.to_string() == target_id {
+                matched_device_id = Some(dev_id);
+                break;
+            }
+        }
+
+        let found_id = match matched_device_id {
+            Some(id) => id,
+            None => return Err(format!("未在系统中找到 ID 为 {} 的音频输出设备", target_id)),
+        };
+
+        let addr_default = AudioObjectPropertyAddress {
+            m_selector: K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE,
+            m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+        let size = std::mem::size_of::<u32>() as u32;
+        let status = unsafe {
+            AudioObjectSetPropertyData(
+                K_AUDIO_OBJECT_SYSTEM_OBJECT,
+                &addr_default,
+                0,
+                ptr::null(),
+                size,
+                &found_id as *const u32 as *const c_void,
+            )
+        };
+        if status != NO_ERR {
+            return Err(format!("设置默认音频输出设备失败: OSStatus {}", status));
+        }
+
+        Ok(())
+    }
+}
+
 pub fn list_audio_devices() -> Result<Vec<AudioDeviceInfo>, String> {
     #[cfg(target_os = "windows")]
     {
         windows_audio::list_devices()
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        macos_audio::list_devices()
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         Ok(vec![])
     }
@@ -188,10 +521,14 @@ pub fn set_default_audio_device(device_id: &str) -> Result<(), String> {
     {
         windows_audio::set_default(device_id)
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        macos_audio::set_default(device_id)
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = device_id;
-        Err("仅 Windows 系统支持切换系统默认音频源".into())
+        Err("当前系统不支持切换系统默认音频源".into())
     }
 }
 
