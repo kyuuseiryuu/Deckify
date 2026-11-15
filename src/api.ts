@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AudioDeviceInfo,
   LayoutConfig,
   LocalAppInfo,
   ServerInfo,
@@ -85,6 +86,14 @@ export function getEmojiIcon(
   }
   const emoji = iconPath.slice(EMOJI_ICON_PREFIX.length).trim();
   return emoji || null;
+}
+
+export async function listAudioDevices(): Promise<AudioDeviceInfo[]> {
+  return invoke<AudioDeviceInfo[]>("list_audio_devices");
+}
+
+export async function setDefaultAudioDevice(deviceId: string): Promise<void> {
+  return invoke<void>("set_default_audio_device", { deviceId });
 }
 
 export function resolveIconUrl(

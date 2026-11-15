@@ -237,6 +237,26 @@ pub fn execute_action(app: &tauri::AppHandle, action: &SlotAction) -> Result<(),
                 Ok(())
             }
         }
+        SlotAction::AudioOutput {
+            mode,
+            target_device_id,
+            whitelist_device_ids,
+        } => {
+            match mode.as_str() {
+                "direct" => {
+                    if let Some(id) = target_device_id {
+                        crate::audio::set_default_audio_device(id)?;
+                    } else {
+                        return Err("未配置目标音频输出源".into());
+                    }
+                }
+                "cycle" | "hybrid" => {
+                    crate::audio::cycle_audio_device(whitelist_device_ids)?;
+                }
+                _ => {}
+            }
+            Ok(())
+        }
     }
 }
 

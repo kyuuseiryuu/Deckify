@@ -1,5 +1,6 @@
 mod actions;
 mod apps;
+pub mod audio;
 mod certs;
 mod models;
 mod server;
@@ -276,6 +277,29 @@ async fn fetch_url_text(url: String) -> Result<String, String> {
     .map_err(|e| format!("任务执行失败: {}", e))?
 }
 
+#[tauri::command]
+async fn list_audio_devices() -> Result<Vec<crate::audio::AudioDeviceInfo>, String> {
+    tokio::task::spawn_blocking(crate::audio::list_audio_devices)
+        .await
+        .map_err(|e| format!("Task error: {}", e))?
+}
+
+#[tauri::command]
+async fn set_default_audio_device(
+    state: State<'_, AppState>,
+    device_id: String,
+) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || crate::audio::set_default_audio_device(&device_id))
+        .await
+        .map_err(|e| format!("Task error: {}", e))??;
+
+    if let Ok(devices) = crate::audio::list_audio_devices() {
+        state.broadcast_audio_devices(&devices).await;
+        let _ = state.app_handle.emit("audio-devices-updated", &devices);
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -467,6 +491,8 @@ pub fn run() {
             open_accessibility_settings,
             open_external_url,
             fetch_url_text,
+            list_audio_devices,
+            set_default_audio_device,
         ])
         .run(tauri::generate_context!())
         .expect("error while running LanDeck");

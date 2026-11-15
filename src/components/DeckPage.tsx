@@ -16,9 +16,11 @@ import {
   Webhook,
   Layers,
   Type,
+  Check,
+  X,
 } from "lucide-react";
 import { getEmojiIcon } from "../api";
-import type { DeckSlot, LayoutConfig, SystemStats, WsServerMsg } from "../types";
+import type { AudioDeviceInfo, DeckSlot, LayoutConfig, SystemStats, WsServerMsg } from "../types";
 import { computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
 import { useTheme } from "../utils/theme";
@@ -27,6 +29,8 @@ import { MonitorTile } from "./MonitorTile";
 import { PairingPage } from "./PairingPage";
 
 const SELECTED_LAYOUT_KEY = "smartdeck_selected_layout_id";
+import { getAudioDeviceIcon } from "../utils/audio";
+
 const PAIRING_CODE_KEY = "smartdeck_pairing_code";
 const SOUND_ENABLED_KEY = "landeck_sound_enabled";
 
@@ -47,6 +51,8 @@ export function DeckPage() {
   const [flashMap, setFlashMap] = useState<Record<string, "ok" | "err">>({});
   const [pressingMap, setPressingMap] = useState<Record<string, boolean>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [audioDevices, setAudioDevices] = useState<AudioDeviceInfo[]>([]);
+  const [showAudioFlyout, setShowAudioFlyout] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const activeLayoutIdRef = useRef<string | null>(null);
@@ -54,6 +60,8 @@ export function DeckPage() {
   const pressTimersRef = useRef<Record<string, number>>({});
   const toastTimerRef = useRef<number | null>(null);
   activeLayoutIdRef.current = activeLayout?.id ?? null;
+  const longPressTimerRef = useRef<number | null>(null);
+  const isLongPressTriggeredRef = useRef(false);
 
   const showToast = (msg: string, durationMs = 2400) => {
     setToastMsg(msg);
@@ -152,6 +160,8 @@ export function DeckPage() {
             setShowPicker(false);
           } else if (msg.type === "systemStats") {
             setStats(msg.stats);
+          } else if (msg.type === "audioDevices") {
+            setAudioDevices(msg.devices);
           } else if (msg.type === "actionResult") {
             setFlashMap((prev) => ({
               ...prev,
@@ -299,6 +309,26 @@ export function DeckPage() {
           slotId: slot.id,
         })
       );
+    }
+  };
+
+  const handleSelectAudioDevice = (deviceId: string) => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate(25);
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "setAudioDevice",
+          deviceId,
+        })
+      );
+    }
+    setShowAudioFlyout(false);
+    const target = audioDevices.find((d) => d.id === deviceId);
+    if (target) {
+      setToastMsg(`已切换至: ${target.name.split("(")[0].trim()}`);
+      setTimeout(() => setToastMsg(null), 2500);
     }
   };
 
@@ -469,6 +499,69 @@ export function DeckPage() {
             const isImageTile = slot.action.type === "image";
             const isMonitorTile = slot.action.type === "monitor";
             const emojiIcon = getEmojiIcon(slot.icon);
+            const audioAction =
+              slot.action.type === "audioOutput" ? slot.action : null;
+            const defaultAudio = audioDevices.find((d) => d.isDefault);
+            const isDirectActive =
+              audioAction !== null &&
+              audioAction.mode === "direct" &&
+              defaultAudio?.id === audioAction.targetDeviceId;
+
+            let displayLabel = slot.label;
+            if (audioAction && (!displayLabel || displayLabel === "切换音源")) {
+              if (audioAction.mode === "direct") {
+                const targetDev = audioDevices.find(
+                  (d) => d.id === audioAction.targetDeviceId
+                );
+                displayLabel = targetDev
+                  ? targetDev.name.split("(")[0].trim()
+                  : "指定设备";
+              } else {
+                displayLabel = defaultAudio
+                  ? defaultAudio.name.split("(")[0].trim()
+                  : "音频输出";
+              }
+            }
+
+            const handleSlotPointerDown = () => {
+              if (audioAction) {
+                if (audioAction.mode === "flyout") {
+                  if ("vibrate" in navigator) navigator.vibrate(15);
+                  setShowAudioFlyout(true);
+                  return;
+                }
+                if (audioAction.mode === "hybrid") {
+                  isLongPressTriggeredRef.current = false;
+                  longPressTimerRef.current = window.setTimeout(() => {
+                    isLongPressTriggeredRef.current = true;
+                    if ("vibrate" in navigator) navigator.vibrate(35);
+                    setShowAudioFlyout(true);
+                  }, 420);
+                  return;
+                }
+              }
+              handleTrigger(slot);
+            };
+
+            const handleSlotPointerUp = () => {
+              if (audioAction && audioAction.mode === "hybrid") {
+                if (longPressTimerRef.current) {
+                  clearTimeout(longPressTimerRef.current);
+                  longPressTimerRef.current = null;
+                }
+                if (!isLongPressTriggeredRef.current) {
+                  handleTrigger(slot);
+                }
+              }
+            };
+
+            const handleSlotPointerCancel = () => {
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            };
+
             const refreshInterval =
               slot.action.type === "image" ? slot.action.refreshInterval : 0;
             const imgSrc = emojiIcon
@@ -480,37 +573,40 @@ export function DeckPage() {
                 className={`deck-slot filled ${isImageTile ? "is-image" : ""} ${
                   isMonitorTile ? "is-monitor" : ""
                 } ${pressingMap[slot.id] ? "pressing" : ""} ${
-                  flash ? `flash-${flash}` : ""
-                }`}
+                  isDirectActive ? "is-active-device" : ""
+                } ${flash ? `flash-${flash}` : ""}`}
                 style={{
                   backgroundColor: slot.color || "#1e293b",
                   gridColumn: `${col + 1} / span ${colSpan}`,
                   gridRow: `${row + 1} / span ${rowSpan}`,
                 }}
-                onPointerDown={() => handleTrigger(slot)}
+                onPointerDown={handleSlotPointerDown}
+                onPointerUp={handleSlotPointerUp}
+                onPointerCancel={handleSlotPointerCancel}
+                onPointerLeave={handleSlotPointerCancel}
               >
                 {isMonitorTile && slot.action.type === "monitor" ? (
                   <MonitorTile
                     metric={slot.action.metric}
                     stats={stats}
-                    label={slot.label}
+                    label={displayLabel}
                   />
                 ) : isImageTile && imgSrc ? (
                   <>
                     <img
                       src={imgSrc}
-                      alt={slot.label}
+                      alt={displayLabel}
                       className="slot-full-img"
                       draggable={false}
                     />
-                    {slot.label && (
+                    {displayLabel && (
                       <span
                         className="slot-overlay-label"
                         style={
                           slot.fontSize ? { fontSize: `${slot.fontSize}px` } : undefined
                         }
                       >
-                        {slot.label}
+                        {displayLabel}
                       </span>
                     )}
                   </>
@@ -526,7 +622,7 @@ export function DeckPage() {
                     ) : imgSrc ? (
                       <img
                         src={imgSrc}
-                        alt={slot.label}
+                        alt={displayLabel}
                         className="deck-slot-img"
                         draggable={false}
                       />
@@ -543,16 +639,31 @@ export function DeckPage() {
                         {slot.action.type === "macro" && <Layers size={24} />}
                         {slot.action.type === "url" && <Globe size={24} />}
                         {slot.action.type === "command" && <Terminal size={24} />}
+                        {audioAction && (
+                          <div style={{ position: "relative", display: "inline-flex" }}>
+                            {audioAction.mode === "direct"
+                              ? getAudioDeviceIcon(
+                                  audioDevices.find(
+                                    (d) => d.id === audioAction.targetDeviceId
+                                  )?.name,
+                                  24
+                                )
+                              : getAudioDeviceIcon(defaultAudio?.name, 24)}
+                            {audioAction.mode === "hybrid" && (
+                              <span className="slot-indicator-dots">•••</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
-                    {slot.label && (
+                    {displayLabel && (
                       <span
                         className="deck-slot-label"
                         style={
                           slot.fontSize ? { fontSize: `${slot.fontSize}px` } : undefined
                         }
                       >
-                        {slot.label}
+                        {displayLabel}
                       </span>
                     )}
                   </>
@@ -560,6 +671,66 @@ export function DeckPage() {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {showAudioFlyout && (
+        <div
+          className="audio-flyout-backdrop"
+          onClick={() => setShowAudioFlyout(false)}
+        >
+          <div
+            className="audio-flyout-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="audio-flyout-header">
+              <div className="audio-flyout-header-info">
+                <h3 className="audio-flyout-title">选择音频输出源</h3>
+                <span className="audio-flyout-desc">
+                  点击直接切换当前电脑输出声音的设备
+                </span>
+              </div>
+              <button
+                className="icon-btn"
+                onClick={() => setShowAudioFlyout(false)}
+                title="关闭"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="audio-device-list">
+              {audioDevices.length === 0 ? (
+                <div className="audio-empty-tip">未检测到可用音频设备</div>
+              ) : (
+                audioDevices.map((dev) => (
+                  <button
+                    key={dev.id}
+                    className={`audio-device-item ${dev.isDefault ? "active" : ""}`}
+                    onClick={() => handleSelectAudioDevice(dev.id)}
+                  >
+                    <div className="audio-device-icon">
+                      {getAudioDeviceIcon(dev.name, 20)}
+                    </div>
+                    <div className="audio-device-info">
+                      <div className="audio-device-name" title={dev.name}>
+                        {dev.name}
+                      </div>
+                      {dev.isDefault && (
+                        <div className="audio-device-badge">
+                          <Check size={12} />
+                          <span>当前正在使用</span>
+                        </div>
+                      )}
+                    </div>
+                    {dev.isDefault && (
+                      <Check size={18} className="audio-device-check" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
 

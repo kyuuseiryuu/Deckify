@@ -27,6 +27,14 @@ export interface MacroStep {
   delayMs: number;
 }
 
+export interface AudioDeviceInfo {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export type AudioOutputMode = "flyout" | "hybrid" | "cycle" | "direct";
+
 export type SlotAction =
   | { type: "app"; name: string; path: string }
   | { type: "hotkey"; modifiers: string[]; key: string; repeatCount?: number }
@@ -47,7 +55,13 @@ export type SlotAction =
     }
   | { type: "macro"; steps: MacroStep[] }
   | { type: "url"; url: string }
-  | { type: "command"; command: string };
+  | { type: "command"; command: string }
+  | {
+      type: "audioOutput";
+      mode: AudioOutputMode;
+      targetDeviceId?: string;
+      whitelistDeviceIds?: string[];
+    };
 
 export interface SystemStats {
   cpu: number;
@@ -93,6 +107,7 @@ export type WsServerMsg =
   | { type: "layoutSync"; layout: LayoutConfig }
   | { type: "actionResult"; slotId: string; ok: boolean; error?: string | null }
   | { type: "systemStats"; stats: SystemStats }
+  | { type: "audioDevices"; devices: AudioDeviceInfo[] }
   | { type: "pong" }
   | { type: "authError"; message: string }
   | { type: "error"; message: string };

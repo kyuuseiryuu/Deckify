@@ -1,6 +1,6 @@
 [package]
 name = "landeck"
-version = "1.3.0"
+version = "1.4.0"
 description = "Turn mobile devices into a customizable LanDeck controller"
 authors = ["LanDeck"]
 edition = "2021"
@@ -27,6 +27,15 @@ local-ip-address = "0.6"
 uuid = { version = "1", features = ["v4"] }
 enigo = "0.2"
 sysinfo = "0.32"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Media_Audio",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_UI_Shell_PropertiesSystem"
+] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 plist = "1"

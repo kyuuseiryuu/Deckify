@@ -220,6 +220,11 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         let _ = tx.send(json);
                     }
                 }
+                if let Ok(devices) = crate::audio::list_audio_devices() {
+                    if let Ok(json) = serde_json::to_string(&WsServerMsg::AudioDevices { devices }) {
+                        let _ = tx.send(json);
+                    }
+                }
                 let _ = state.app_handle.emit("clients-updated", ());
             }
             WsClientMsg::Trigger { layout_id, slot_id } => {
@@ -235,6 +240,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         .map(|s| s.action.clone())
                 };
 
+                let is_audio = matches!(action_opt, Some(SlotAction::AudioOutput { .. }));
                 let result = match action_opt {
                     Some(SlotAction::SwitchLayout {
                         layout_id: target_id,
@@ -263,6 +269,13 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     None => Err("Slot not found".into()),
                 };
 
+                if is_audio && result.is_ok() {
+                    if let Ok(devices) = crate::audio::list_audio_devices() {
+                        state.broadcast_audio_devices(&devices).await;
+                        let _ = state.app_handle.emit("audio-devices-updated", &devices);
+                    }
+                }
+
                 let reply = match result {
                     Ok(()) => WsServerMsg::ActionResult {
                         slot_id,
@@ -278,6 +291,28 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
                 if let Ok(json) = serde_json::to_string(&reply) {
                     let _ = tx.send(json);
+                }
+            }
+            WsClientMsg::GetAudioDevices => {
+                if let Ok(devices) = crate::audio::list_audio_devices() {
+                    if let Ok(json) = serde_json::to_string(&WsServerMsg::AudioDevices { devices }) {
+                        let _ = tx.send(json);
+                    }
+                }
+            }
+            WsClientMsg::SetAudioDevice { device_id } => {
+                if !authenticated {
+                    continue;
+                }
+                let res = tokio::task::spawn_blocking(move || crate::audio::set_default_audio_device(&device_id))
+                    .await
+                    .unwrap_or_else(|e| Err(format!("Task panic: {}", e)));
+
+                if res.is_ok() {
+                    if let Ok(devices) = crate::audio::list_audio_devices() {
+                        state.broadcast_audio_devices(&devices).await;
+                        let _ = state.app_handle.emit("audio-devices-updated", &devices);
+                    }
                 }
             }
             WsClientMsg::Ping => {

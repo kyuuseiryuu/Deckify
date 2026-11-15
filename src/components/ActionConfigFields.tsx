@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import type { LocalAppInfo, SlotAction } from "../types";
+import {
+  Plus,
+  Trash2,
+  RefreshCw,
+  Play,
+  SkipForward,
+  SkipBack,
+  Volume1,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { listAudioDevices } from "../api";
+import type { AudioDeviceInfo, AudioOutputMode, LocalAppInfo, SlotAction } from "../types";
+import { CustomSelect, type CustomSelectOption } from "./CustomSelect";
+import { getAudioDeviceIcon, getCleanAudioDeviceName } from "../utils/audio";
 
 export const isWindowsHost = (): boolean => {
   if (typeof navigator === "undefined") return false;
@@ -97,6 +110,19 @@ export function summarizeAction(action: SlotAction): string {
       return action.url || "打开网址";
     case "command":
       return action.command.trim() || "Shell 命令";
+    case "audioOutput": {
+      switch (action.mode) {
+        case "direct":
+          return "音源: 指定设备";
+        case "flyout":
+          return "音源: 弹浮层选择";
+        case "cycle":
+          return "音源: 单击轮换";
+        case "hybrid":
+        default:
+          return "音源: 单击轮换/长按浮层";
+      }
+    }
     default:
       return action.type;
   }
@@ -162,17 +188,29 @@ export function ActionConfigFields({
   }, [recordingKey, action, onChange]);
 
   if (action.type === "app") {
+    const appOptions: CustomSelectOption[] = [
+      { value: "", label: "选择本机应用..." },
+      ...localApps.map((app) => ({
+        value: app.path,
+        label: app.name,
+        hint: app.path,
+        icon: <Play size={14} />,
+      })),
+    ];
+
     return (
       <div className="form-group">
         {!compact && <label>启动应用</label>}
         {localApps.length > 0 && (
-          <select
-            className="select-input"
+          <CustomSelect
             value={
               localApps.some((a) => a.path === action.path) ? action.path : ""
             }
-            onChange={(e) => {
-              const found = localApps.find((a) => a.path === e.target.value);
+            options={appOptions}
+            placeholder="选择本机应用..."
+            searchable
+            onChange={(val) => {
+              const found = localApps.find((a) => a.path === val);
               if (found) {
                 onChange(
                   { type: "app", name: found.name, path: found.path },
@@ -180,14 +218,7 @@ export function ActionConfigFields({
                 );
               }
             }}
-          >
-            <option value="">选择本机应用...</option>
-            {localApps.map((app) => (
-              <option key={app.path} value={app.path}>
-                {app.name}
-              </option>
-            ))}
-          </select>
+          />
         )}
         <input
           value={action.path}
@@ -199,7 +230,7 @@ export function ActionConfigFields({
           }}
           placeholder={
             isWindowsHost()
-              ? "C:\\Program Files\\... 或选择上方应用"
+              ? "应用绝对路径，如 C:\\..."
               : "/Applications/Safari.app"
           }
         />
@@ -318,7 +349,7 @@ export function ActionConfigFields({
               autoEnter: action.autoEnter,
             })
           }
-          placeholder="输入要自动键入的文本内容（支持多行/中英文）..."
+          placeholder="输入自动键入的文本..."
         />
         <label className="checkbox-inline">
           <input
@@ -339,14 +370,23 @@ export function ActionConfigFields({
   }
 
   if (action.type === "media") {
+    const mediaSelectOptions: CustomSelectOption[] = [
+      { value: "play_pause", label: "播放 / 暂停", icon: <Play size={14} /> },
+      { value: "next", label: "下一曲", icon: <SkipForward size={14} /> },
+      { value: "prev", label: "上一曲", icon: <SkipBack size={14} /> },
+      { value: "vol_up", label: "音量增大", icon: <Volume2 size={14} /> },
+      { value: "vol_down", label: "音量减小", icon: <Volume1 size={14} /> },
+      { value: "mute", label: "静音切换", icon: <VolumeX size={14} /> },
+    ];
+
     return (
       <div className="form-group">
         {!compact && <label>媒体控制动作</label>}
-        <select
-          className="select-input"
+        <CustomSelect
           value={action.control}
-          onChange={(e) => {
-            const control = e.target.value as
+          options={mediaSelectOptions}
+          onChange={(val) => {
+            const control = val as
               | "play_pause"
               | "next"
               | "prev"
@@ -356,13 +396,7 @@ export function ActionConfigFields({
             const opt = MEDIA_OPTIONS.find((m) => m.value === control);
             onChange({ type: "media", control }, opt?.shortLabel);
           }}
-        >
-          {MEDIA_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        />
       </div>
     );
   }
@@ -493,11 +527,196 @@ export function ActionConfigFields({
           onChange={(e) =>
             onChange({ type: "command", command: e.target.value })
           }
-          placeholder="echo hello"
+          placeholder="输入终端命令，如: calc 或 notepad"
         />
       </div>
     );
   }
 
+  if (action.type === "audioOutput") {
+    return (
+      <AudioOutputConfig
+        action={action}
+        onChange={onChange}
+        compact={compact}
+      />
+    );
+  }
+
   return null;
+}
+
+const AUDIO_MODE_OPTIONS: CustomSelectOption[] = [
+  {
+    value: "hybrid",
+    label: "混合模式",
+    badge: "推荐",
+    hint: "轻按快速轮换，长按弹出设备浮层",
+  },
+  {
+    value: "flyout",
+    label: "浮层选择",
+    hint: "轻按弹出完整音源列表浮层",
+  },
+  {
+    value: "cycle",
+    label: "循环切换",
+    hint: "轻按在可用设备间轮流切换",
+  },
+  {
+    value: "direct",
+    label: "指定设备",
+    hint: "轻按直接切换到特定输出设备",
+  },
+];
+
+function AudioOutputConfig({
+  action,
+  onChange,
+  compact,
+}: {
+  action: Extract<SlotAction, { type: "audioOutput" }>;
+  onChange: (next: SlotAction, suggestedLabel?: string) => void;
+  compact?: boolean;
+}) {
+  const [devices, setDevices] = useState<AudioDeviceInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchDevices = () => {
+    setLoading(true);
+    listAudioDevices()
+      .then((res) => setDevices(res))
+      .catch((err) => console.error("Failed to list audio devices", err))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDevices();
+  }, []);
+
+  const deviceOptions: CustomSelectOption[] = [
+    { value: "", label: "-- 请选择目标设备 --" },
+    ...devices.map((d) => ({
+      value: d.id,
+      label: d.name,
+      icon: getAudioDeviceIcon(d.name, 16),
+      badge: d.isDefault ? "默认" : undefined,
+    })),
+  ];
+
+  return (
+    <>
+      <div className="form-group">
+        {!compact && <label>交互模式</label>}
+        <CustomSelect
+          value={action.mode || "hybrid"}
+          options={AUDIO_MODE_OPTIONS}
+          onChange={(val) => {
+            onChange({
+              ...action,
+              mode: val as AudioOutputMode,
+            });
+          }}
+        />
+        <span className="field-hint" style={{ marginTop: 4, display: "block", fontSize: 12, opacity: 0.8 }}>
+          {action.mode === "hybrid" && "在移动端：轻按瞬间在常用设备间切换；长按400ms呼出完整音源弹层。"}
+          {action.mode === "flyout" && "在移动端：轻按直接弹出当前连接的所有音频源列表供精准选择。"}
+          {action.mode === "cycle" && "在移动端：轻按直接轮流切换到下一个音频输出设备。"}
+          {action.mode === "direct" && "在移动端：轻按直接切换到预设的特定设备，当前设备激活时高亮。"}
+        </span>
+      </div>
+
+      {action.mode === "direct" && (
+        <div className="form-group">
+          <div className="audio-header-row">
+            {!compact && <label className="audio-section-label">目标输出设备</label>}
+            <button
+              type="button"
+              className="btn-link-action"
+              onClick={fetchDevices}
+              disabled={loading}
+              title="刷新设备列表"
+            >
+              <RefreshCw size={12} className={loading ? "spin" : ""} />
+              <span>刷新</span>
+            </button>
+          </div>
+          <CustomSelect
+            value={action.targetDeviceId || ""}
+            options={deviceOptions}
+            placeholder="-- 请选择目标设备 --"
+            onChange={(devId) => {
+              const found = devices.find((d) => d.id === devId);
+              const shortName = found ? getCleanAudioDeviceName(found.name) : undefined;
+              onChange(
+                { ...action, targetDeviceId: devId },
+                shortName || undefined
+              );
+            }}
+          />
+        </div>
+      )}
+
+      {(action.mode === "cycle" || action.mode === "hybrid") && (
+        <div className="form-group">
+          <div className="audio-header-row">
+            <div className="audio-header-left">
+              <label className="audio-section-label">参与轮换的设备</label>
+              <span className="audio-section-hint">未勾选时默认轮换全部可用设备</span>
+            </div>
+            <button
+              type="button"
+              className="btn-link-action"
+              onClick={fetchDevices}
+              disabled={loading}
+              title="刷新设备列表"
+            >
+              <RefreshCw size={12} className={loading ? "spin" : ""} />
+              <span>刷新</span>
+            </button>
+          </div>
+          <div className="audio-whitelist-box">
+            {devices.length === 0 ? (
+              <span style={{ fontSize: 12, opacity: 0.6, padding: "8px 4px" }}>
+                {loading ? "正在获取系统音频设备..." : "未检测到可用音频设备"}
+              </span>
+            ) : (
+              devices.map((d) => {
+                const isChecked = action.whitelistDeviceIds?.includes(d.id) ?? false;
+                return (
+                  <label key={d.id} className="audio-whitelist-item">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const current = action.whitelistDeviceIds || [];
+                        const nextList = e.target.checked
+                          ? [...current, d.id]
+                          : current.filter((id) => id !== d.id);
+                        onChange({
+                          ...action,
+                          whitelistDeviceIds: nextList,
+                        });
+                      }}
+                    />
+                    <span className="audio-whitelist-item-icon">
+                      {getAudioDeviceIcon(d.name, 15)}
+                    </span>
+                    <span className="audio-whitelist-item-name" title={d.name}>
+                      {d.name}
+                    </span>
+                    {d.isDefault && (
+                      <span className="audio-whitelist-badge-default">
+                        默认
+                      </span>
+                    )}
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

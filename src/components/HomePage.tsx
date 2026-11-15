@@ -197,12 +197,19 @@ export function HomePage({
         <section className="card qr-card">
           <div className="card-header-row">
             <h2 className="card-title">扫码连接移动设备</h2>
-            {serverInfo?.availableIps && serverInfo.availableIps.length > 1 && (
+          </div>
+          <p className="card-desc">
+            确保手机与电脑处于同一局域网，扫码后即可在手机上选择要使用的布局配置：
+          </p>
+
+          {serverInfo?.availableIps && serverInfo.availableIps.length > 1 && (
+            <div className="ip-selector-bar">
+              <span className="ip-selector-label">当前网卡 IP：</span>
               <div
                 className="ip-selector-wrap"
                 title="检测到多个网卡，点击可切换用于生成连接二维码与移动端访问的 IP"
               >
-                <Network size={14} />
+                <Network size={13} />
                 <select
                   className="ip-select"
                   value={serverInfo.lanIp}
@@ -215,11 +222,8 @@ export function HomePage({
                   ))}
                 </select>
               </div>
-            )}
-          </div>
-          <p className="card-desc">
-            确保手机与电脑处于同一局域网，扫码后即可在手机上选择要使用的布局配置：
-          </p>
+            </div>
+          )}
 
           <div className="qr-box">
             {serverInfo ? (
@@ -298,12 +302,11 @@ export function HomePage({
                 <div className="https-box-header">
                   <div className="https-box-title">
                     {serverInfo.httpsEnabled ? (
-                      <ShieldCheck size={15} className="https-icon-on" />
+                      <ShieldCheck size={16} className="https-icon-on" />
                     ) : (
-                      <Lock size={15} />
+                      <Lock size={16} />
                     )}
                     <span>本地 HTTPS (SSL)</span>
-                    <span className="https-recommend-badge">推荐开启</span>
                   </div>
                   <button
                     type="button"
@@ -330,13 +333,20 @@ export function HomePage({
                         ? "处理中..."
                         : serverInfo.httpsEnabled
                           ? "关闭 HTTPS"
-                          : "一键生成 CA 并开启"}
+                          : "一键开启"}
                     </span>
                   </button>
                 </div>
 
                 <p className="https-hint">
-                  <strong>为什么推荐开启：</strong>可加密局域网通信，并解锁浏览器原生 <strong>WakeLock 屏幕常亮</strong>（充电时自动生效，无需视频保活）与完整 <strong>PWA 主屏幕应用</strong>体验。
+                  {!serverInfo.httpsEnabled ? (
+                    <span className="https-recommend-badge">推荐开启</span>
+                  ) : (
+                    <span className="https-running-badge">已启用</span>
+                  )}
+                  <span>
+                    加密局域网通信，并解锁浏览器原生 <strong>WakeLock 屏幕常亮</strong>（充电时自动生效，无需视频保活）与完整 <strong>PWA 主屏幕应用</strong>体验。
+                  </span>
                 </p>
 
                 {httpsError && (

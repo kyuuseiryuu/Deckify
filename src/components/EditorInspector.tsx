@@ -5,12 +5,15 @@ import {
   Play,
   Terminal,
   Trash2,
+  RefreshCw,
+  LayoutGrid,
 } from "lucide-react";
 import { triggerSlotAction } from "../api";
 import { COLOR_SWATCHES, IMAGE_REFRESH_OPTIONS } from "../constants/editor";
 import type { DeckSlot, LayoutConfig, LocalAppInfo } from "../types";
 import { canPlaceSpan } from "../utils/grid";
 import { ActionConfigFields } from "./ActionConfigFields";
+import { CustomSelect } from "./CustomSelect";
 import type { TemplateKind } from "./EditorPalette";
 import { MacroStepsEditor } from "./MacroStepsEditor";
 import { SlotIconPicker } from "./SlotIconPicker";
@@ -253,10 +256,14 @@ export function EditorInspector({
               </div>
               <div className="form-group">
                 <label>网络图片刷新频率</label>
-                <select
-                  className="select-input"
-                  value={selectedSlot.action.refreshInterval ?? 0}
-                  onChange={(e) =>
+                <CustomSelect
+                  value={String(selectedSlot.action.refreshInterval ?? 0)}
+                  options={IMAGE_REFRESH_OPTIONS.map((opt) => ({
+                    value: String(opt.value),
+                    label: opt.label,
+                    icon: <RefreshCw size={13} />,
+                  }))}
+                  onChange={(val) =>
                     onUpsertSlot(selectedIndex, {
                       ...selectedSlot,
                       action: {
@@ -265,17 +272,11 @@ export function EditorInspector({
                           selectedSlot.action.type === "image"
                             ? selectedSlot.action.note
                             : "",
-                        refreshInterval: Number(e.target.value) || 0,
+                        refreshInterval: Number(val) || 0,
                       },
                     })
                   }
-                >
-                  {IMAGE_REFRESH_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </>
           )}
@@ -283,11 +284,19 @@ export function EditorInspector({
           {selectedSlot.action.type === "switchLayout" && (
             <div className="form-group">
               <label>目标布局配置</label>
-              <select
-                className="select-input"
-                value={selectedSlot.action.layoutId}
-                onChange={(e) => {
-                  const targetId = e.target.value;
+              <CustomSelect
+                value={selectedSlot.action.layoutId || ""}
+                placeholder="请选择要跳转的布局..."
+                options={[
+                  { value: "", label: "请选择要跳转的布局..." },
+                  ...allLayouts.map((l) => ({
+                    value: l.id,
+                    label: l.name,
+                    badge: `${l.cols}×${l.rows}`,
+                    icon: <LayoutGrid size={14} />,
+                  })),
+                ]}
+                onChange={(targetId) => {
                   const target = allLayouts.find((l) => l.id === targetId);
                   onUpsertSlot(selectedIndex, {
                     ...selectedSlot,
@@ -295,14 +304,7 @@ export function EditorInspector({
                     action: { type: "switchLayout", layoutId: targetId },
                   });
                 }}
-              >
-                <option value="">请选择要跳转的布局...</option>
-                {allLayouts.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name} ({l.cols}×{l.rows})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           )}
 

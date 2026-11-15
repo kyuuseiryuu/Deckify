@@ -15,6 +15,7 @@ import {
   Type,
   Volume2,
   Webhook,
+  Headphones,
 } from "lucide-react";
 import { resolveIconUrl } from "../api";
 import type { LocalAppInfo } from "../types";
@@ -31,6 +32,7 @@ export type TemplateKind =
   | "network"
   | "switchLayout"
   | "media"
+  | "audioOutput"
   | "webhook"
   | "macro";
 
@@ -245,6 +247,16 @@ export function EditorPalette({
             <div>
               <div className="tpl-title">媒体 / 音量</div>
               <div className="tpl-desc">播放暂停、切歌、系统音量控制</div>
+            </div>
+          </button>
+          <button
+            className="action-template-btn"
+            onClick={() => onCreateTemplate("audioOutput")}
+          >
+            <Headphones size={18} />
+            <div>
+              <div className="tpl-title">音源控制</div>
+              <div className="tpl-desc">切换电脑扬声器/耳机/音频输出设备</div>
             </div>
           </button>
           <button

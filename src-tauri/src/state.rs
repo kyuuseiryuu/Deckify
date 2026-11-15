@@ -390,4 +390,18 @@ impl AppState {
             let _ = sender.send(payload.clone());
         }
     }
+
+    pub async fn broadcast_audio_devices(&self, devices: &[crate::audio::AudioDeviceInfo]) {
+        let msg = WsServerMsg::AudioDevices {
+            devices: devices.to_vec(),
+        };
+        let Ok(payload) = serde_json::to_string(&msg) else {
+            return;
+        };
+
+        let guard = self.inner.read().await;
+        for sender in guard.connections.values() {
+            let _ = sender.send(payload.clone());
+        }
+    }
 }

@@ -100,6 +100,18 @@ pub enum SlotAction {
     Command {
         command: String,
     },
+    AudioOutput {
+        #[serde(default = "default_audio_mode")]
+        mode: String,
+        #[serde(default, rename = "targetDeviceId")]
+        target_device_id: Option<String>,
+        #[serde(default, rename = "whitelistDeviceIds")]
+        whitelist_device_ids: Vec<String>,
+    },
+}
+
+fn default_audio_mode() -> String {
+    "hybrid".to_string()
 }
 
 fn default_method() -> String {
@@ -174,6 +186,11 @@ pub enum WsClientMsg {
         #[serde(rename = "slotId")]
         slot_id: String,
     },
+    GetAudioDevices,
+    SetAudioDevice {
+        #[serde(rename = "deviceId")]
+        device_id: String,
+    },
     Ping,
 }
 
@@ -194,6 +211,9 @@ pub enum WsServerMsg {
     },
     SystemStats {
         stats: SystemStats,
+    },
+    AudioDevices {
+        devices: Vec<crate::audio::AudioDeviceInfo>,
     },
     Pong,
     AuthError {

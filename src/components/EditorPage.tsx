@@ -14,6 +14,7 @@ import {
   Webhook,
   Layers,
   Type,
+  Headphones,
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -196,6 +197,15 @@ export function EditorPage({
       allLayouts.find((l) => l.id !== draft.id) ?? allLayouts[0];
     const defaultMod = isWindowsHost() ? "ctrl" : "cmd";
     const defaults: Record<typeof type, { label: string; color: string; action: SlotAction }> = {
+      audioOutput: {
+        label: "切换音源",
+        color: "#0891b2",
+        action: {
+          type: "audioOutput",
+          mode: "hybrid",
+          whitelistDeviceIds: [],
+        },
+      },
       hotkey: {
         label: "快捷键",
         color: "#1d4ed8",
@@ -599,6 +609,7 @@ export function EditorPage({
                                 {slot.action.type === "macro" && <Layers size={20} />}
                                 {slot.action.type === "url" && <Globe size={20} />}
                                 {slot.action.type === "command" && <Terminal size={20} />}
+                                {slot.action.type === "audioOutput" && <Headphones size={20} />}
                               </div>
                             )}
                             {slot.label && (
