@@ -27,6 +27,7 @@ interface EditorInspectorProps {
   onCreateTemplate: (kind: TemplateKind, targetIndex?: number) => void;
   onUpsertSlot: (index: number, slot: DeckSlot) => void;
   onClearSlot: (index: number) => void;
+  onSelectLayout?: (layoutId: string) => void;
 }
 
 export function EditorInspector({
@@ -38,6 +39,7 @@ export function EditorInspector({
   onCreateTemplate,
   onUpsertSlot,
   onClearSlot,
+  onSelectLayout,
 }: EditorInspectorProps) {
   return (
     <aside className="editor-inspector">
@@ -338,7 +340,25 @@ export function EditorInspector({
             {selectedSlot.action.type !== "monitor" && (
               <button
                 className="btn btn-primary btn-sm"
-                onClick={() => triggerSlotAction(selectedSlot.action)}
+                disabled={
+                  selectedSlot.action.type === "switchLayout" &&
+                  !allLayouts.some(
+                    (l) =>
+                      l.id ===
+                      (selectedSlot.action.type === "switchLayout"
+                        ? selectedSlot.action.layoutId
+                        : "")
+                  )
+                }
+                onClick={() => {
+                  if (selectedSlot.action.type === "switchLayout") {
+                    if (selectedSlot.action.layoutId) {
+                      onSelectLayout?.(selectedSlot.action.layoutId);
+                    }
+                    return;
+                  }
+                  triggerSlotAction(selectedSlot.action);
+                }}
               >
                 <Play size={14} />
                 <span>测试触发</span>

@@ -34,6 +34,26 @@ import { getAudioDeviceIcon } from "../utils/audio";
 const PAIRING_CODE_KEY = "smartdeck_pairing_code";
 const SOUND_ENABLED_KEY = "landeck_sound_enabled";
 
+function detectDeviceName(): string {
+  if (typeof navigator === "undefined") return "移动设备";
+  const ua = navigator.userAgent || "";
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) {
+    return "iPad";
+  }
+  if (/Android/i.test(ua)) {
+    const match = ua.match(/Android[^;)]*;\s*([^;)]+?)(?:\s+Build\/|[;)])/i);
+    const model = match?.[1]?.trim();
+    if (model && model.toLowerCase() !== "k") {
+      return model;
+    }
+    return "Android 设备";
+  }
+  if (/Windows/i.test(ua)) return "Windows 设备";
+  if (/Macintosh/i.test(ua)) return "Mac";
+  return "移动设备";
+}
+
 export function DeckPage() {
   const [theme, toggleTheme] = useTheme();
   const [soundEnabled, setSoundEnabled] = useState(
@@ -105,11 +125,20 @@ export function DeckPage() {
 
       const sendRegister = () => {
         if (ws.readyState !== WebSocket.OPEN) return;
+        const screenWidth = Math.round(
+          window.screen.width || window.innerWidth || 0
+        );
+        const screenHeight = Math.round(
+          window.screen.height || window.innerHeight || 0
+        );
         ws.send(
           JSON.stringify({
             type: "register",
             code: pairingCode,
             selectedLayoutId: localStorage.getItem(SELECTED_LAYOUT_KEY),
+            screenWidth: screenWidth > 0 ? screenWidth : undefined,
+            screenHeight: screenHeight > 0 ? screenHeight : undefined,
+            deviceName: detectDeviceName(),
           })
         );
       };
@@ -610,6 +639,16 @@ export function DeckPage() {
                       </span>
                     )}
                   </>
+                ) : slot.action.type === "text" &&
+                  !emojiIcon &&
+                  !imgSrc &&
+                  displayLabel ? (
+                  <span
+                    className="slot-text-icon"
+                    style={{ fontSize: `${slot.fontSize ?? 18}px` }}
+                  >
+                    {displayLabel}
+                  </span>
                 ) : (
                   <>
                     {emojiIcon ? (

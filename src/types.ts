@@ -95,6 +95,14 @@ export interface LayoutConfig {
   updatedAt: number;
 }
 
+export interface ScreenRatioPreset {
+  ratioKey: string;
+  deviceName?: string;
+  width: number;
+  height: number;
+  createdAt: number;
+}
+
 export interface LocalAppInfo {
   name: string;
   path: string;

@@ -19,23 +19,31 @@ import {
   EyeOff,
   Lock,
   ShieldCheck,
+  Smartphone,
+  X,
 } from "lucide-react";
 import {
   checkAccessibilityPermission,
   openAccessibilitySettings,
   openExternalUrl,
 } from "../api";
-import type { LayoutConfig, ServerInfo } from "../types";
+import type { LayoutConfig, ScreenRatioPreset, ServerInfo } from "../types";
 import type { ThemeMode } from "../utils/theme";
 import { ConfigTransferModal } from "./ConfigTransferModal";
 
 interface HomePageProps {
   serverInfo: ServerInfo | null;
   layouts: LayoutConfig[];
+  screenRatios: ScreenRatioPreset[];
   onlineCount: number;
   theme: ThemeMode;
   onToggleTheme: () => void;
-  onCreateLayout: () => void;
+  onCreateLayout: (options?: {
+    name?: string;
+    width?: number;
+    height?: number;
+  }) => void | Promise<void>;
+  onDeleteScreenRatio: (ratioKey: string) => Promise<void>;
   onSelectLayout: (layout: LayoutConfig) => void;
   onDuplicateLayout: (layout: LayoutConfig) => void;
   onDeleteLayout: (layoutId: string) => void;
@@ -59,10 +67,12 @@ function formatLastSeen(ts: number): string {
 export function HomePage({
   serverInfo,
   layouts,
+  screenRatios,
   onlineCount,
   theme,
   onToggleTheme,
   onCreateLayout,
+  onDeleteScreenRatio,
   onSelectLayout,
   onDuplicateLayout,
   onDeleteLayout,
@@ -84,6 +94,37 @@ export function HomePage({
     | { mode: "import" }
     | { mode: "export"; layouts: LayoutConfig[] }
   >(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newLayoutName, setNewLayoutName] = useState("");
+  const [selectedRatioKey, setSelectedRatioKey] = useState<string>("default");
+
+  useEffect(() => {
+    if (!createModalOpen && !transferModal) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [createModalOpen, transferModal]);
+
+  const openCreateModal = () => {
+    setNewLayoutName(`配置 ${layouts.length + 1}`);
+    setSelectedRatioKey(screenRatios[0]?.ratioKey ?? "default");
+    setCreateModalOpen(true);
+  };
+
+  const handleConfirmCreate = async () => {
+    const chosen = screenRatios.find((r) => r.ratioKey === selectedRatioKey);
+    await onCreateLayout({
+      name: newLayoutName,
+      width: chosen ? chosen.width : 390,
+      height: chosen ? chosen.height : 844,
+    });
+    setCreateModalOpen(false);
+  };
 
   useEffect(() => {
     if (serverInfo?.pairingCode) {
@@ -409,7 +450,7 @@ export function HomePage({
                     <span>导出全部</span>
                   </button>
                 )}
-                <button className="btn btn-primary btn-sm" onClick={onCreateLayout}>
+                <button className="btn btn-primary btn-sm" onClick={openCreateModal}>
                   <Plus size={14} />
                   <span>创建配置</span>
                 </button>
@@ -497,6 +538,132 @@ export function HomePage({
           </section>
         </div>
       </div>
+
+      {createModalOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setCreateModalOpen(false)}
+        >
+          <div
+            className="modal-card config-modal-card create-layout-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="config-modal-header">
+              <h3 className="modal-title">创建布局配置</h3>
+              <button
+                type="button"
+                className="config-modal-close"
+                onClick={() => setCreateModalOpen(false)}
+                aria-label="关闭"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="create-layout-modal-body">
+              <div className="form-group">
+                <label>配置名称</label>
+                <input
+                  value={newLayoutName}
+                  onChange={(e) => setNewLayoutName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleConfirmCreate();
+                    }
+                  }}
+                  placeholder={`配置 ${layouts.length + 1}`}
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label>屏幕分辨率比例</label>
+                <div className="ratio-preset-list">
+                {screenRatios.map((preset) => {
+                  const isActive = selectedRatioKey === preset.ratioKey;
+                  const isLandscape = preset.width > preset.height;
+                  return (
+                    <div
+                      key={preset.ratioKey}
+                      className={`ratio-preset-item ${isActive ? "active" : ""}`}
+                      onClick={() => setSelectedRatioKey(preset.ratioKey)}
+                    >
+                      <div className="ratio-preset-main">
+                        <Smartphone size={15} />
+                        <div>
+                          <div className="ratio-preset-title">
+                            {preset.deviceName?.trim() ||
+                              `${preset.width} × ${preset.height}`}
+                            <span className="status-pill offline">
+                              {isLandscape ? "横屏" : "竖屏"}
+                            </span>
+                          </div>
+                          <div className="ratio-preset-sub">
+                            {preset.width} × {preset.height} · 比例{" "}
+                            {preset.ratioKey}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-xs"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await onDeleteScreenRatio(preset.ratioKey);
+                          if (selectedRatioKey === preset.ratioKey) {
+                            setSelectedRatioKey("default");
+                          }
+                        }}
+                        title="移除此比例"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                <div
+                  className={`ratio-preset-item ${
+                    selectedRatioKey === "default" ? "active" : ""
+                  }`}
+                  onClick={() => setSelectedRatioKey("default")}
+                >
+                  <div className="ratio-preset-main">
+                    <Smartphone size={15} />
+                    <div>
+                      <div className="ratio-preset-title">
+                        390 × 844
+                        <span className="status-pill offline">默认竖屏</span>
+                      </div>
+                      <div className="ratio-preset-sub">默认比例 (195:422)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setCreateModalOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleConfirmCreate}
+              >
+                <Plus size={14} />
+                <span>创建并编辑</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {transferModal && (
         <ConfigTransferModal

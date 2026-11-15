@@ -3,6 +3,7 @@ import type {
   AudioDeviceInfo,
   LayoutConfig,
   LocalAppInfo,
+  ScreenRatioPreset,
   ServerInfo,
   SlotAction,
 } from "./types";
@@ -41,6 +42,16 @@ export async function saveLayout(layout: LayoutConfig): Promise<LayoutConfig> {
 
 export async function deleteLayout(layoutId: string): Promise<void> {
   return invoke<void>("delete_layout", { layoutId });
+}
+
+export async function listScreenRatios(): Promise<ScreenRatioPreset[]> {
+  return invoke<ScreenRatioPreset[]>("list_screen_ratios");
+}
+
+export async function deleteScreenRatio(
+  ratioKey: string
+): Promise<ScreenRatioPreset[]> {
+  return invoke<ScreenRatioPreset[]>("delete_screen_ratio", { ratioKey });
 }
 
 export async function listLocalApps(): Promise<LocalAppInfo[]> {

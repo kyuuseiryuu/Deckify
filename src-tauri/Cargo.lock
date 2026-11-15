@@ -2119,7 +2119,7 @@ dependencies = [
 
 [[package]]
 name = "landeck"
-version = "1.4.1"
+version = "1.4.3"
 dependencies = [
  "axum",
  "axum-server",

@@ -15,6 +15,8 @@ import {
   Layers,
   Type,
   Headphones,
+  Smartphone,
+  Download,
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -27,6 +29,7 @@ import type {
   DeckSlot,
   LayoutConfig,
   LocalAppInfo,
+  ScreenRatioPreset,
   ServerInfo,
   SlotAction,
   SystemStats,
@@ -35,6 +38,8 @@ import { computeGridLayout } from "../utils/grid";
 import { withRefreshTick } from "../utils/imageUrl";
 import type { ThemeMode } from "../utils/theme";
 import { isWindowsHost } from "./ActionConfigFields";
+import { ConfigTransferModal } from "./ConfigTransferModal";
+import { CustomSelect, type CustomSelectOption } from "./CustomSelect";
 import { EditorInspector } from "./EditorInspector";
 import { EditorPalette, type TemplateKind } from "./EditorPalette";
 import { MonitorTile } from "./MonitorTile";
@@ -42,21 +47,25 @@ import { MonitorTile } from "./MonitorTile";
 interface EditorPageProps {
   layout: LayoutConfig;
   allLayouts: LayoutConfig[];
+  screenRatios: ScreenRatioPreset[];
   serverInfo: ServerInfo | null;
   theme: ThemeMode;
   onToggleTheme: () => void;
   onBack: () => void;
   onSaveLayout: (layout: LayoutConfig) => Promise<void>;
+  onSelectLayout: (layoutId: string) => void;
 }
 
 export function EditorPage({
   layout,
   allLayouts,
+  screenRatios,
   serverInfo,
   theme,
   onToggleTheme,
   onBack,
   onSaveLayout,
+  onSelectLayout,
 }: EditorPageProps) {
   const [draft, setDraft] = useState<LayoutConfig>(layout);
   const [apps, setApps] = useState<LocalAppInfo[]>([]);
@@ -73,6 +82,7 @@ export function EditorPage({
     title: string;
     createSlot: (idx: number) => DeckSlot;
   } | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     const unlisten = listen<SystemStats>("system-stats", (ev) => {
@@ -196,7 +206,10 @@ export function EditorPage({
     const otherLayout =
       allLayouts.find((l) => l.id !== draft.id) ?? allLayouts[0];
     const defaultMod = isWindowsHost() ? "ctrl" : "cmd";
-    const defaults: Record<typeof type, { label: string; color: string; action: SlotAction }> = {
+    const defaults: Record<
+      typeof type,
+      { label: string; color: string; fontSize?: number; action: SlotAction }
+    > = {
       audioOutput: {
         label: "切换音源",
         color: "#0891b2",
@@ -214,6 +227,7 @@ export function EditorPage({
       text: {
         label: "输入文本",
         color: "#0284c7",
+        fontSize: 18,
         action: { type: "text", text: "", autoEnter: false },
       },
       image: {
@@ -277,6 +291,7 @@ export function EditorPage({
         label: cfg.label,
         icon: null,
         color: cfg.color,
+        fontSize: cfg.fontSize,
         action: cfg.action,
       }),
       targetIndex
@@ -346,6 +361,39 @@ export function EditorPage({
     });
   };
 
+  const ratioOptions = useMemo<CustomSelectOption[]>(() => {
+    const opts: CustomSelectOption[] = [];
+    const seenValues = new Set<string>();
+    const addOption = (
+      w: number,
+      h: number,
+      badge?: string,
+      name?: string
+    ) => {
+      const val = `${w}x${h}`;
+      if (seenValues.has(val)) return;
+      seenValues.add(val);
+      opts.push({
+        value: val,
+        label: name?.trim() ? `${name.trim()} (${w} × ${h})` : `${w} × ${h}`,
+        badge,
+        icon: <Smartphone size={13} />,
+      });
+    };
+
+    for (const preset of screenRatios) {
+      addOption(
+        preset.width,
+        preset.height,
+        preset.ratioKey,
+        preset.deviceName
+      );
+    }
+    addOption(390, 844, "默认");
+    addOption(draft.width, draft.height, "当前");
+    return opts;
+  }, [screenRatios, draft.width, draft.height]);
+
   return (
     <div className="editor-page">
       <header className="editor-header">
@@ -360,9 +408,21 @@ export function EditorPage({
             onChange={(e) => commitDraft({ ...draft, name: e.target.value })}
             placeholder="配置名称"
           />
-          <span className="res-badge">
-            {draft.width} × {draft.height}
-          </span>
+          <div className="editor-ratio-select">
+            <CustomSelect
+              value={`${draft.width}x${draft.height}`}
+              options={ratioOptions}
+              searchable={false}
+              onChange={(val) => {
+                const [wStr, hStr] = val.split("x");
+                const w = Number(wStr);
+                const h = Number(hStr);
+                if (w > 0 && h > 0) {
+                  commitDraft({ ...draft, width: w, height: h });
+                }
+              }}
+            />
+          </div>
         </div>
 
         <div className="editor-header-right">
@@ -376,39 +436,74 @@ export function EditorPage({
           </button>
 
           <div className="grid-size-control">
-            <label>列</label>
-            <input
-              type="number"
-              min={2}
-              max={8}
-              value={draft.cols}
-              onChange={(e) =>
-                commitDraft({
-                  ...draft,
-                  cols: Math.min(8, Math.max(2, Number(e.target.value) || 3)),
-                })
-              }
-            />
-            <span>×</span>
-            <label>行</label>
-            <input
-              type="number"
-              min={2}
-              max={8}
-              value={draft.rows}
-              onChange={(e) =>
-                commitDraft({
-                  ...draft,
-                  rows: Math.min(8, Math.max(2, Number(e.target.value) || 5)),
-                })
-              }
-            />
+            <div className="grid-stepper">
+              <span className="grid-stepper-label">列</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-xs grid-stepper-btn"
+                disabled={draft.cols <= 1}
+                onClick={() =>
+                  commitDraft({ ...draft, cols: Math.max(1, draft.cols - 1) })
+                }
+                title="减少列数"
+              >
+                -
+              </button>
+              <span className="grid-stepper-val">{draft.cols}</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-xs grid-stepper-btn"
+                disabled={draft.cols >= 8}
+                onClick={() =>
+                  commitDraft({ ...draft, cols: Math.min(8, draft.cols + 1) })
+                }
+                title="增加列数"
+              >
+                +
+              </button>
+            </div>
+            <span className="grid-stepper-sep">×</span>
+            <div className="grid-stepper">
+              <span className="grid-stepper-label">行</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-xs grid-stepper-btn"
+                disabled={draft.rows <= 1}
+                onClick={() =>
+                  commitDraft({ ...draft, rows: Math.max(1, draft.rows - 1) })
+                }
+                title="减少行数"
+              >
+                -
+              </button>
+              <span className="grid-stepper-val">{draft.rows}</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-xs grid-stepper-btn"
+                disabled={draft.rows >= 8}
+                onClick={() =>
+                  commitDraft({ ...draft, rows: Math.min(8, draft.rows + 1) })
+                }
+                title="增加行数"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div className="sync-indicator">
             <CheckCircle2 size={14} />
             <span>{syncState === "saving" ? "同步中..." : "已实时同步"}</span>
           </div>
+
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowExportModal(true)}
+            title="导出当前配置"
+          >
+            <Download size={14} />
+            <span>导出</span>
+          </button>
 
           <button
             className="btn btn-secondary btn-sm"
@@ -572,6 +667,16 @@ export function EditorPage({
                               </span>
                             )}
                           </>
+                        ) : slot.action.type === "text" &&
+                          !getEmojiIcon(slot.icon) &&
+                          !iconSrc &&
+                          slot.label ? (
+                          <span
+                            className="slot-text-icon"
+                            style={{ fontSize: `${slot.fontSize ?? 18}px` }}
+                          >
+                            {slot.label}
+                          </span>
                         ) : (
                           <>
                             {getEmojiIcon(slot.icon) ? (
@@ -637,6 +742,7 @@ export function EditorPage({
           onCreateTemplate={createTemplateSlot}
           onUpsertSlot={upsertSlot}
           onClearSlot={clearSlot}
+          onSelectLayout={onSelectLayout}
         />
       </div>
 
@@ -687,6 +793,15 @@ export function EditorPage({
             </div>
           </div>
         </div>
+      )}
+      {showExportModal && (
+        <ConfigTransferModal
+          mode="export"
+          layoutsToExport={[draft]}
+          generateId={createSlotId}
+          onImportLayouts={async () => {}}
+          onClose={() => setShowExportModal(false)}
+        />
       )}
     </div>
   );

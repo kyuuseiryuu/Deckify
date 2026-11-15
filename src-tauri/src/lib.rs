@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 use crate::actions::execute_action;
 use crate::apps::scan_local_apps;
-use crate::models::{LayoutConfig, LocalAppInfo, ServerInfo, SlotAction, SystemStats};
+use crate::models::{LayoutConfig, LocalAppInfo, ScreenRatioPreset, ServerInfo, SlotAction, SystemStats};
 use crate::state::AppState;
 
 fn pick_port(preferred: u16) -> u16 {
@@ -154,6 +154,21 @@ async fn delete_layout(state: State<'_, AppState>, layout_id: String) -> Result<
     state.delete_layout(&layout_id).await;
     let _ = state.app_handle.emit("layouts-updated", ());
     Ok(())
+}
+
+#[tauri::command]
+async fn list_screen_ratios(state: State<'_, AppState>) -> Result<Vec<ScreenRatioPreset>, String> {
+    Ok(state.list_screen_ratios().await)
+}
+
+#[tauri::command]
+async fn delete_screen_ratio(
+    state: State<'_, AppState>,
+    ratio_key: String,
+) -> Result<Vec<ScreenRatioPreset>, String> {
+    let updated = state.delete_screen_ratio(&ratio_key).await;
+    let _ = state.app_handle.emit("screen-ratios-updated", ());
+    Ok(updated)
 }
 
 #[tauri::command]
@@ -484,6 +499,8 @@ pub fn run() {
             list_layouts,
             save_layout,
             delete_layout,
+            list_screen_ratios,
+            delete_screen_ratio,
             list_local_apps,
             save_custom_image,
             trigger_slot_action,

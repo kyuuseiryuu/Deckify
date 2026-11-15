@@ -172,6 +172,17 @@ pub struct SystemStats {
     pub net_tx_kbps: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenRatioPreset {
+    pub ratio_key: String,
+    #[serde(default)]
+    pub device_name: String,
+    pub width: u32,
+    pub height: u32,
+    pub created_at: u64,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum WsClientMsg {
@@ -179,6 +190,12 @@ pub enum WsClientMsg {
         code: String,
         #[serde(rename = "selectedLayoutId")]
         selected_layout_id: Option<String>,
+        #[serde(default, rename = "screenWidth")]
+        screen_width: Option<u32>,
+        #[serde(default, rename = "screenHeight")]
+        screen_height: Option<u32>,
+        #[serde(default, rename = "deviceName")]
+        device_name: Option<String>,
     },
     Trigger {
         #[serde(rename = "layoutId")]

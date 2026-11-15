@@ -197,6 +197,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             WsClientMsg::Register {
                 code,
                 selected_layout_id,
+                screen_width,
+                screen_height,
+                device_name,
             } => {
                 if !state.verify_pairing_code(&code).await {
                     if let Ok(json) = serde_json::to_string(&WsServerMsg::AuthError {
@@ -208,6 +211,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 }
 
                 authenticated = true;
+                if let (Some(w), Some(h)) = (screen_width, screen_height) {
+                    state.add_screen_ratio_if_new(w, h, device_name).await;
+                }
                 let (layouts, selected) = state
                     .register_connection(conn_id.clone(), tx.clone(), selected_layout_id)
                     .await;

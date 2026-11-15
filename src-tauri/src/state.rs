@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Emitter;
 use tokio::sync::{mpsc, RwLock};
 
-use crate::models::{LayoutConfig, ServerInfo, SystemStats, WsServerMsg};
+use crate::models::{LayoutConfig, ScreenRatioPreset, ServerInfo, SystemStats, WsServerMsg};
 
 pub type WsSender = mpsc::UnboundedSender<String>;
 
@@ -19,6 +19,7 @@ pub struct AppState {
 
 pub struct StateInner {
     pub layouts: HashMap<String, LayoutConfig>,
+    pub screen_ratios: Vec<ScreenRatioPreset>,
     pub connections: HashMap<String, WsSender>,
     pub data_dir: PathBuf,
     pub icon_cache_dir: PathBuf,
@@ -55,12 +56,14 @@ impl AppState {
         let _ = fs::create_dir_all(&icon_cache_dir);
 
         let layouts = Self::load_layouts_from_disk(&data_dir);
+        let screen_ratios = Self::load_screen_ratios_from_disk(&data_dir);
         let hide_dock_icon = Self::load_hide_dock_icon(&data_dir);
         let https_enabled = Self::load_https_enabled(&data_dir);
 
         Self {
             inner: Arc::new(RwLock::new(StateInner {
                 layouts,
+                screen_ratios,
                 connections: HashMap::new(),
                 data_dir,
                 icon_cache_dir,
@@ -81,6 +84,10 @@ impl AppState {
 
     fn layouts_file(data_dir: &PathBuf) -> PathBuf {
         data_dir.join("layouts.json")
+    }
+
+    fn screen_ratios_file(data_dir: &PathBuf) -> PathBuf {
+        data_dir.join("screen_ratios.json")
     }
 
     fn pairing_code_file(data_dir: &PathBuf) -> PathBuf {
@@ -126,6 +133,99 @@ impl AppState {
         if let Ok(json) = serde_json::to_string_pretty(&list) {
             let _ = fs::write(Self::layouts_file(data_dir), json);
         }
+    }
+
+    fn load_screen_ratios_from_disk(data_dir: &PathBuf) -> Vec<ScreenRatioPreset> {
+        let path = Self::screen_ratios_file(data_dir);
+        let Ok(raw) = fs::read_to_string(path) else {
+            return Vec::new();
+        };
+        let list: Vec<ScreenRatioPreset> = serde_json::from_str(&raw).unwrap_or_default();
+        let mut seen = HashSet::new();
+        let mut deduped = Vec::new();
+        for item in list {
+            if item.width > 0 && item.height > 0 && seen.insert(item.ratio_key.clone()) {
+                deduped.push(item);
+            }
+        }
+        deduped
+    }
+
+    fn persist_screen_ratios(data_dir: &PathBuf, ratios: &[ScreenRatioPreset]) {
+        if let Ok(json) = serde_json::to_string_pretty(ratios) {
+            let _ = fs::write(Self::screen_ratios_file(data_dir), json);
+        }
+    }
+
+    fn gcd(mut a: u32, mut b: u32) -> u32 {
+        while b != 0 {
+            let t = b;
+            b = a % b;
+            a = t;
+        }
+        a.max(1)
+    }
+
+    pub fn compute_ratio_key(width: u32, height: u32) -> String {
+        let g = Self::gcd(width, height);
+        format!("{}:{}", width / g, height / g)
+    }
+
+    pub async fn add_screen_ratio_if_new(
+        &self,
+        width: u32,
+        height: u32,
+        device_name: Option<String>,
+    ) -> bool {
+        if width == 0 || height == 0 {
+            return false;
+        }
+        let ratio_key = Self::compute_ratio_key(width, height);
+        let clean_name = device_name
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| format!("{} × {}", width, height));
+
+        let mut guard = self.inner.write().await;
+        if let Some(existing) = guard
+            .screen_ratios
+            .iter_mut()
+            .find(|r| r.ratio_key == ratio_key)
+        {
+            if existing.device_name.trim().is_empty() {
+                existing.device_name = clean_name;
+                Self::persist_screen_ratios(&guard.data_dir, &guard.screen_ratios);
+                drop(guard);
+                let _ = self.app_handle.emit("screen-ratios-updated", ());
+            }
+            return false;
+        }
+        guard.screen_ratios.insert(
+            0,
+            ScreenRatioPreset {
+                ratio_key,
+                device_name: clean_name,
+                width,
+                height,
+                created_at: now_unix_secs(),
+            },
+        );
+        Self::persist_screen_ratios(&guard.data_dir, &guard.screen_ratios);
+        drop(guard);
+        let _ = self.app_handle.emit("screen-ratios-updated", ());
+        true
+    }
+
+    pub async fn list_screen_ratios(&self) -> Vec<ScreenRatioPreset> {
+        let guard = self.inner.read().await;
+        guard.screen_ratios.clone()
+    }
+
+    pub async fn delete_screen_ratio(&self, ratio_key: &str) -> Vec<ScreenRatioPreset> {
+        let mut guard = self.inner.write().await;
+        guard.screen_ratios.retain(|r| r.ratio_key != ratio_key);
+        Self::persist_screen_ratios(&guard.data_dir, &guard.screen_ratios);
+        guard.screen_ratios.clone()
     }
 
     pub async fn server_info(&self) -> ServerInfo {
